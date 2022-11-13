@@ -11,3 +11,8 @@ kernel:
 	cp kernel.bin boot/kernel.bin
 	
 	grub-mkrescue /usr/lib/grub/i386-pc -o kernel.iso . 
+
+	qemu-system-x86_64 -cdrom kernel.iso
+
+clean:
+	rm obj/* kernel.bin kernel.iso

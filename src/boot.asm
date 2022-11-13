@@ -1,8 +1,13 @@
 global start
 extern long_mode_start
 
-section .text
+section .bootstrap
 bits 32
+
+align 4096
+IDT:
+    dw 0 ; len
+    dd 0 ; base
 
 start:
     mov esp, stk_top ; Init stack pointer
@@ -15,12 +20,18 @@ start:
     ; Before long mode, set up paging
     call init_page_tables
     call enable_paging
+    ; Processor now mapping virtual addresses
+    ; Virtual address 0xC000 0000 = 1100 0000 0000 0000   0000 0000 0000 0000  ->  0000 0000 0000 0000   0000 0000 0000 0000
 
-    lgdt [gdt64.pointer]
+    lgdt [gdt64.pointer] ; GDT is at address 
+
     jmp gdt64.code_segment:long_mode_start
 
 
     hlt ; Hang
+
+test_call:
+    ret
 
 check_multiboot:
     cmp eax, 0x36D76289 ; Compliant bootloader will store magic val here in eax
@@ -73,25 +84,30 @@ check_long:
 init_page_tables:
     ; identity mapping phys = virt
     ; paging enabled automatically when long mode is enabled
+    ; Must transform addresses since .bss thinks it's at virtual address already but we need physical addresses for this stage
     mov eax, page_table_l3
     or eax, 0b11
-    mov [page_table_l4], eax
+    mov [(page_table_l4)], eax ;
+    mov [(page_table_l4)], eax ; Map 64 long jump and here to same section in memory (where it all lives)
+                                          ; Index calcualted with 8*0xC0 = 0x600
 
     mov eax, page_table_l2
     or eax, 0b11
     mov [page_table_l3], eax
 
+    lidt [IDT]
     mov ecx, 0
 loop:
 
-    mov eax, 0x200000
-    mul ecx
-    or eax, 0b10000011
+    mov eax, 0x00200000 ; Mapping from 2MB into memory
+    mul ecx           ; Mapping 2MB * n from memory and placing in page table  
+    or eax, 0b10000011 ; Modifying flags of entry
 
-    mov [page_table_l2 + ecx * 8], eax
+
+    mov [(page_table_l2) + ecx * 8], eax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
 
     inc ecx
-    cmp ecx, 512
+    cmp ecx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
     jne loop
 
     ret
@@ -105,22 +121,20 @@ enable_paging:
     mov cr4, eax
 
     ; Loading cr3 with phys address of PML4
-    mov eax, page_table_l4
+    mov eax, (page_table_l4)
     mov cr3, eax
 
     ; Enable long mode
-
-    mov ecx, 0xC0000080
+    mov ecx, 0xC0000080 ; Selecting EFER register
     rdmsr
 
-    or eax, 1 << 8
-    wrmsr
+    or eax, 1 << 8      ; Enabling long mode bit
+    wrmsr               ; Writing to EFER register
 
     ; Enable paging
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
-    
 
     ret
 
@@ -128,7 +142,7 @@ error:
     mov dword [0xb8000], 0x4f535f45
     mov dword [0xb8004], 0x4f3a4f52
     mov dword [0xb8008], 0x4f204f20
-    mov dword [0xb800A], "C"
+    mov byte [0xb800A], al
     hlt     ; Hang
 
 section .bss
@@ -150,5 +164,5 @@ gdt64:
 .code_segment: equ $ - gdt64
 	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
 .pointer:
-	dw $ - gdt64 - 1 ; length
+	dw $  - gdt64 - 1 ; length
 	dq gdt64 ; address
