@@ -17,7 +17,27 @@ long_mode_start:
 
     ;; Modify page tables inside .bss ; map kernel to 
     ;; 
+    cli                           ; Clear the interrupt flag.
+    mov ax, 0            ; Set the A-register to the data descriptor.
+    mov ds, ax                    ; Set the data segment to the A-register.
+    mov es, ax                    ; Set the extra segment to the A-register.
+    mov fs, ax                    ; Set the F-segment to the A-register.
+    mov gs, ax                    ; Set the G-segment to the A-register.
+    mov ss, ax                    ; Set the stack segment to the A-register.
+    mov edi, 0xB8000              ; Set the destination index to 0xB8000.
+    mov rax, 0x1F201F201F201F20   ; Set the A-register to 0x1F201F201F201F20.
+    mov ecx, 500                  ; Set the C-register to 500.
+    rep stosq    
+    
+    hlt
 
+    ; jmp k_main ;; Intersection jump how to? Linker script failing with src/main64.asm:(.bootstrap+0x1a): relocation truncated to fit: R_X86_64_PC32 against `.text'
+
+
+section .text
+bits 64
+
+k_main:
     ; Jump into kernel entry here
     cli                           ; Clear the interrupt flag.
     mov ax, 0            ; Set the A-register to the data descriptor.
@@ -30,7 +50,4 @@ long_mode_start:
     mov rax, 0x1F201F201F201F20   ; Set the A-register to 0x1F201F201F201F20.
     mov ecx, 500                  ; Set the C-register to 500.
     rep stosq                     ; Clear the screen.
-    hlt                           ; Halt the processor.
-
-    hlt
 

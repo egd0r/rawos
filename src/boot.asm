@@ -88,12 +88,12 @@ init_page_tables:
     mov eax, page_table_l3
     or eax, 0b11
     mov [(page_table_l4)], eax ;
-    mov [(page_table_l4)], eax ; Map 64 long jump and here to same section in memory (where it all lives)
-                                          ; Index calcualted with 8*0xC0 = 0x600
+    mov [(page_table_l4+0xFF)], eax ; Linking higher-half addresses too
 
     mov eax, page_table_l2
     or eax, 0b11
     mov [page_table_l3], eax
+    mov [page_table_l3+0xFF], eax
 
     lidt [IDT]
     mov ecx, 0
@@ -105,6 +105,7 @@ loop:
 
 
     mov [(page_table_l2) + ecx * 8], eax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
+    mov [(page_table_l2) + 0x80 + (ecx * 8)], eax
 
     inc ecx
     cmp ecx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
@@ -146,6 +147,7 @@ error:
     hlt     ; Hang
 
 section .bss
+bits 64 ; So we can link it with 64 bit addressing
 align 4096
 page_table_l4:
     resb 4096
@@ -164,5 +166,5 @@ gdt64:
 .code_segment: equ $ - gdt64
 	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
 .pointer:
-	dw $  - gdt64 - 1 ; length
+	dw $ - gdt64 - 1 ; length
 	dq gdt64 ; address
