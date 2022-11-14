@@ -7,7 +7,7 @@ SECTIONS
 
     boot : 
     {
-        *(.multiboot2_header)
+        KEEP(*(.multiboot2_header))
         *(.bootstrap)
         *(.rodata*)
     }
@@ -23,13 +23,6 @@ SECTIONS
    {
         _data = .;
         *(.data)
-        . = ALIGN(4096);
-   }
-
-   .eh_frame : AT(ADDR(.eh_frame))
-   {
-       _ehframe = .;
-       *(.eh_frame)
         . = ALIGN(4096);
    }
 

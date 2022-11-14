@@ -81,6 +81,7 @@ check_long:
     mov al, "L"
     jmp error
 
+; Init pages and identity map first 16MB 
 init_page_tables:
     ; identity mapping phys = virt
     ; paging enabled automatically when long mode is enabled
@@ -88,8 +89,6 @@ init_page_tables:
     mov eax, page_table_l3
     or eax, 0b11
     mov [(page_table_l4)], eax ;
-    mov [(page_table_l4)], eax ; Map 64 long jump and here to same section in memory (where it all lives)
-                                          ; Index calcualted with 8*0xC0 = 0x600
 
     mov eax, page_table_l2
     or eax, 0b11

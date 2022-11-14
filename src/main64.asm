@@ -1,4 +1,5 @@
 global long_mode_start
+extern kmain
 
 section .bootstrap
 bits 64 ; in 64 bit mode
@@ -13,7 +14,7 @@ long_mode_start:
     mov gs, ax
     
     ; Writing to video memory
-    mov dword [0xb8000], 0x2f6b2f4f
+    ; mov dword [0xb8000], 0x2f6b2f4f
 
     ;; Modify page tables inside .bss ; map kernel to 
     ;; 
@@ -30,7 +31,10 @@ long_mode_start:
     mov rax, 0x1F201F201F201F20   ; Set the A-register to 0x1F201F201F201F20.
     mov ecx, 500                  ; Set the C-register to 500.
     rep stosq                     ; Clear the screen.
-    hlt                           ; Halt the processor.
+
+    
+    mov rdi, rbx
+    jmp kmain
 
     hlt
 

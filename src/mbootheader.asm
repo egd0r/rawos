@@ -2,13 +2,33 @@
 ; multiboot 2
 section .multiboot2_header
 start_:
+    align 8
     ; Magic no
     dd 0xE85250D6 ; Multiboot2 magic no
     dd 0; prot i386
     dd end_ - start_
 
+
     dd 0x100000000 - (0xE85250D6 + 0 + (end_ - start_))
 
+    ; align 8
+    ; dw 3
+    ; dw 1
+    ; dd 12
+    ; dd start_
+
+; fb_start_:
+;     align 8
+;     ; Framebuffer tag goes here
+;     dw 5
+;     dw 1
+;     dd fb_end_-fb_start_
+;     dd 1024
+;     dd 480
+;     dd 32
+; fb_end_:
+
+    align 8
     dw 0
     dw 0
     dd 8
