@@ -33,8 +33,8 @@ long_mode_start:
     rep stosq                     ; Clear the screen.
 
     
-    mov rdi, rbx
-    jmp kmain
+    push rbx
+    call kmain
 
     hlt
 

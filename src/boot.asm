@@ -1,5 +1,6 @@
 global start
 extern long_mode_start
+extern parse
 
 section .bootstrap
 bits 32
@@ -36,6 +37,7 @@ test_call:
 check_multiboot:
     cmp eax, 0x36D76289 ; Compliant bootloader will store magic val here in eax
     jne .nomboot
+
     ret
 
 .nomboot:
