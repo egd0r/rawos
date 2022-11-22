@@ -16,7 +16,7 @@ start_:
     ; dd start_
 
 ; fb_start_: 
-;               Tags constitutes a buffer of structures following each other padded when necessary in order for each tag to start at 8-bytes aligned address. Tags are terminated by a tag of type ‘0’ and size ‘8’
+;             ;   Tags constitutes a buffer of structures following each other padded when necessary in order for each tag to start at 8-bytes aligned address. Tags are terminated by a tag of type ‘0’ and size ‘8’
 ;     align 8
 ;     ; Framebuffer tag goes here
 ;     dw 5

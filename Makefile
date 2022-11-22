@@ -1,6 +1,6 @@
 SRCPATH = src
 OBJPATH = obj
-CFLAGS = -Wall -fpic -ffreestanding -fno-stack-protector -nostdinc -nostdlib
+CFLAGS = -Wall -fpic -ffreestanding -fno-stack-protector -nostdinc -nostdlib -no-pie -lc
 
 kernel:
 	nasm -f elf64 src/main64.asm -o obj/main64.o
@@ -14,7 +14,7 @@ kernel:
 	
 	grub-mkrescue /usr/lib/grub/i386-pc -o kernel.iso . 
 
-	qemu-system-x86_64 -cdrom kernel.iso
+	qemu-system-x86_64 -d int -cdrom kernel.iso
 
 clean:
 	rm obj/* kernel.bin kernel.iso

@@ -9,7 +9,6 @@ SECTIONS
     {
         KEEP(*(.multiboot2_header))
         *(.bootstrap)
-        *(.rodata*)
     }
 
     .text : AT(ADDR(.text))
@@ -30,6 +29,7 @@ SECTIONS
    {
        _bss = .;
        *(.bss)
+        *(.rodata*)
 
        /*
         * You usually need to include generated COMMON symbols

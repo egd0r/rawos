@@ -1,4 +1,5 @@
 global long_mode_start
+extern mbootstruct
 extern kmain
 
 section .bootstrap
@@ -12,6 +13,8 @@ long_mode_start:
     mov es, ax
     mov fs, ax
     mov gs, ax
+
+    mov qword [0xb8228], rbx
     
     ; Writing to video memory
     ; mov dword [0xb8000], 0x2f6b2f4f
@@ -33,7 +36,8 @@ long_mode_start:
     rep stosq                     ; Clear the screen.
 
     
-    push rbx
+    xor rdi, rdi ;; Clearing RDI, is this necessary?
+    mov qword rdi, [mbootstruct] ; Passing struct to C function
     call kmain
 
     hlt

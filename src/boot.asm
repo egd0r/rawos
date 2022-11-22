@@ -1,4 +1,5 @@
 global start
+global gdt64
 extern long_mode_start
 extern parse
 
@@ -11,6 +12,14 @@ IDT:
     dd 0 ; base
 
 start:
+    cli ;; Disable interrupts - I'll be careful, promise!
+
+    mov dword [0xb8008], eax
+    mov dword [0xb8018], 0x36D76289
+    mov dword [0xb8128], ebx
+
+    mov dword [mbootstruct], ebx
+
     mov esp, stk_top ; Init stack pointer
 
     ; Switch to long mode
@@ -25,8 +34,9 @@ start:
     ; Virtual address 0xC000 0000 = 1100 0000 0000 0000   0000 0000 0000 0000  ->  0000 0000 0000 0000   0000 0000 0000 0000
 
     lgdt [gdt64.pointer] ; GDT is at address 
-
-    jmp gdt64.code_segment:long_mode_start
+    
+    ;; Jumping from compatibility mode to long mode
+    jmp gdt64.code_segment:long_mode_start ;; Long jump to 64 bit segment
 
 
     hlt ; Hang
@@ -96,7 +106,6 @@ init_page_tables:
     or eax, 0b11
     mov [page_table_l3], eax
 
-    lidt [IDT]
     mov ecx, 0
 loop:
 
@@ -146,7 +155,7 @@ error:
     mov byte [0xb800A], al
     hlt     ; Hang
 
-section .bss
+section .bss ;; block started by symbol, linker sets bytes to 0
 align 4096
 page_table_l4:
     resb 4096
@@ -159,7 +168,10 @@ stk_bott:
 stk_top:
 
 ; GDT
+global .code_segment ;; Is this safe? Sure...
+global mbootstruct
 section .rodata
+bits 64
 gdt64:
 	dq 0 ; zero entry
 .code_segment: equ $ - gdt64
@@ -167,3 +179,6 @@ gdt64:
 .pointer:
 	dw $  - gdt64 - 1 ; length
 	dq gdt64 ; address
+
+mbootstruct:
+    dd 0 ;; Reserved for multiboot struct information
