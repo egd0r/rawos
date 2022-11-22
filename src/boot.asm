@@ -14,10 +14,6 @@ IDT:
 start:
     cli ;; Disable interrupts - I'll be careful, promise!
 
-    mov dword [0xb8008], eax
-    mov dword [0xb8018], 0x36D76289
-    mov dword [0xb8128], ebx
-
     mov dword [mbootstruct], ebx
 
     mov esp, stk_top ; Init stack pointer
@@ -181,4 +177,4 @@ gdt64:
 	dq gdt64 ; address
 
 mbootstruct:
-    dd 0 ;; Reserved for multiboot struct information
+    dq 0 ;; Reserved for multiboot struct information

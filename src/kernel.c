@@ -28,7 +28,7 @@ static int ypos = 5;
 
 //Try and parse tag without framebuffer enabled
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
-extern int kmain(uint8_t mbr_addr) {
+extern int kmain(unsigned long mbr_addr) {
     // Initialise IDT
     // idt_init();
 
@@ -38,29 +38,38 @@ extern int kmain(uint8_t mbr_addr) {
     cls();
 
     printf("\n");
+    // unsigned size;
+    // *((int *)0xb8000) = 0x2e6b2f4f; // Ok
 
-    struct multiboot_tag *tag;
+    // *((int *)0xb8900) = mbr_addr;   // print address
+    // // *((int *)0xb8900
+
+    // unsigned size;
+
+    // printf("%x", size);
+
+    // struct multiboot_tag *tag;
     unsigned size;
     *((int *)0xb8000) = 0x2e6b2f4f; // Ok
 
     *((int *)0xb8900) = mbr_addr;   // print address
     // *((int *)0xb8900) = 0x00000000;
 
-    printf("hello\n");
-    if (mbr_addr & 7)
-    {
-      printf ("Unaligned mbi: 0x%x\n", mbr_addr); // Doing mboot checks in bootstrap, code unnecessary
-      return;
-    }
+    // printf("hello\n");
+    // if (mbr_addr & 7)
+    // {
+    //   printf ("Unaligned mbi: 0x%x\n", mbr_addr); // Doing mboot checks in bootstrap, code unnecessary
+    //   return;
+    // }
 
     // tag = (struct multiboot_tag *) (mbr_addr + 8);
     // tag->size;
 
-    size = *((unsigned *) mbr_addr);
-    printf("size 0x%x\n", size);
-    tag = (struct multiboot_tag *) ((multiboot_uint8_t *) tag 
-                                  + ((tag->size + 7) & ~7));
-    printf ("Total mbi size 0x%x\n", (unsigned) tag - mbr_addr);
+    // size = *((unsigned *) mbr_addr);
+    // printf("size 0x%x\n", size);
+    // tag = (struct multiboot_tag *) ((multiboot_uint8_t *) tag 
+                                  // + ((tag->size + 7) & ~7));
+    // printf ("Total mbi size 0x%x\n", (unsigned) tag - mbr_addr);
 
     while (1); //Spin on hang
     
