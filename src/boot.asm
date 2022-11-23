@@ -164,7 +164,7 @@ stk_bott:
 stk_top:
 
 ; GDT
-global .code_segment ;; Is this safe? Sure...
+global gdt64 ;; Is this safe? Sure... Code segment is a local variable so can be referenced with gdt64.code_segment
 global mbootstruct
 section .rodata
 bits 64
