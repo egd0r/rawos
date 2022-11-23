@@ -14,7 +14,7 @@ kernel:
 	
 	grub-mkrescue /usr/lib/grub/i386-pc -o kernel.iso . 
 
-	qemu-system-x86_64 -s -S -cdrom kernel.iso
+	qemu-system-x86_64 -cdrom kernel.iso
 
 	# For debugging:
 	# 	-s -S flags to QEMU

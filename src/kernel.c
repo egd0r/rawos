@@ -1,11 +1,8 @@
 
-typedef short int           int16_t;
-typedef unsigned char       uint8_t;
-typedef unsigned short int  uint16_t;
-typedef unsigned int        uint32_t;
-typedef unsigned long int   uint64_t;
 
+#include "types.h"
 #include "multiboot2.h"
+#include "interrupts.c"
 
 #define VIDEO 0xb8000
 static volatile unsigned char *video;
@@ -28,7 +25,7 @@ static int ypos = 5;
 
 //Try and parse tag without framebuffer enabled
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
-extern int kmain(unsigned long mbr_addr) {
+int kmain(unsigned long mbr_addr) {
     // Initialise IDT
     // idt_init();
 
@@ -78,6 +75,7 @@ extern int kmain(unsigned long mbr_addr) {
     }
 
     while (1); //Spin on hang
+    // Spawn init process
     
     return 0;
 }
