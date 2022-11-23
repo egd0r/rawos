@@ -1,4 +1,4 @@
-
+void printf (const char *format, ...);
 
 #include "types.h"
 #include "multiboot2.h"
@@ -15,10 +15,9 @@ static void cls(void);
 static void cls (void);
 static void itoa (char *buf, int base, int d);
 static void putchar (int c);
-void printf (const char *format, ...);
 
 static int xpos = 0;
-static int ypos = 5;
+static int ypos = 0;
 
 // extern void idt_init();
 
@@ -29,14 +28,18 @@ int kmain(unsigned long mbr_addr) {
     // Initialise IDT
     // idt_init();
 
+    idt_init();
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
 
     cls();
 
-    printf("\n");
+    // printf("\n");
+
+   
 
     *((int *)0xb8000) = 0x2e6b2f4f; // Ok
+    printf("OK!\n");
 
     *((int *)0xb8900) = mbr_addr;   // print address
     // *((int *)0xb8900) = 0x00000000;
@@ -74,7 +77,17 @@ int kmain(unsigned long mbr_addr) {
       }
     }
 
-    while (1); //Spin on hang
+
+    printf("SPINNING!\n"); 
+    
+    // printf("\nTesting page fault:\n");
+    // int *testpf = 0x80085405835;
+    // *testpf = 5; // lel
+    
+    
+    while (1) {
+      // printf("hello");
+    }; //Spin on hang
     // Spawn init process
     
     return 0;

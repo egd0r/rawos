@@ -164,12 +164,11 @@ stk_bott:
 stk_top:
 
 ; GDT
-global gdt64 ;; Is this safe? Sure... Code segment is a local variable so can be referenced with gdt64.code_segment
 global mbootstruct
 section .rodata
 bits 64
 gdt64:
-	dq 0 ; zero entry
+	dq 0 ; zero entry 
 .code_segment: equ $ - gdt64
 	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
 .pointer:
