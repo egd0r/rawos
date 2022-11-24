@@ -3,6 +3,7 @@ void printf (const char *format, ...);
 #include "types.h"
 #include "multiboot2.h"
 #include "interrupts.c"
+#include "stdarg.h"
 
 #define VIDEO 0xb8000
 static volatile unsigned char *video;
@@ -80,7 +81,7 @@ int kmain(unsigned long mbr_addr) {
 
     printf("SPINNING!\n"); 
     
-    // printf("\nTesting page fault:\n");
+    // printf("\nTesting page fault: %d\n", 14);
     // int *testpf = 0x80085405835;
     // *testpf = 5; // lel
     
@@ -108,49 +109,6 @@ cls (void)
 /*  Convert the integer D to a string and save the string in BUF. If
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
-static void
-itoa (char *buf, int base, int d)
-{
-  char *p = buf;
-  char *p1, *p2;
-  unsigned long ud = d;
-  int divisor = 10;
-  
-  /*  If %d is specified and D is minus, put ‘-’ in the head. */
-  if (base == 'd' && d < 0)
-    {
-      *p++ = '-';
-      buf++;
-      ud = -d;
-    }
-  else if (base == 'x')
-    divisor = 16;
-
-  /*  Divide UD by DIVISOR until UD == 0. */
-  do
-    {
-      int remainder = ud % divisor;
-      
-      *p++ = (remainder < 10) ? remainder + '0' : remainder + 'a' - 10;
-    }
-  while (ud /= divisor);
-
-  /*  Terminate BUF. */
-  *p = 0;
-  
-  /*  Reverse BUF. */
-  p1 = buf;
-  p2 = p - 1;
-  while (p1 < p2)
-    {
-      char tmp = *p1;
-      *p1 = *p2;
-      *p2 = tmp;
-      p1++;
-      p2--;
-    }
-}
-
 /*  Put the character C on the screen. */
 static void
 putchar (int c)
@@ -173,66 +131,107 @@ putchar (int c)
     goto newline;
 }
 
-/*  Format a string and print it on the screen, just like the libc
-   function printf. */
-void
-printf (const char *format, ...)
-{
-  char **arg = (char **) &format;
-  int c;
-  char buf[20];
+char *_itoa(int num, int base, char *buffer) {
+    char rep[16] = "0123456789ABCDEF";
+    char *ptr = &buffer[49];
+    *ptr = '\0';
 
-  arg++;
-  
-  while ((c = *format++) != 0)
-    {
-      if (c != '%')
-        putchar (c);
-      else
-        {
-          char *p, *p2;
-          int pad0 = 0, pad = 0;
-          
-          c = *format++;
-          if (c == '0')
-            {
-              pad0 = 1;
-              c = *format++;
+    do {
+        *--ptr = rep[num%base];
+        num /= base;
+    } while( num != 0 );
+
+    return ptr;
+}
+
+int is_digit(char let) {
+    return let >= 48 && let <= 57; 
+}
+
+int _atoi(char let) {
+    if (let >= 48 && let <= 57) return let-48;
+    else return -1;
+}
+
+int str_len(char *string) {
+    int ret = 0;
+    for (; *string != '\0'; string++)
+        ret++;
+    return ret;
+}
+
+void pad(char paddingChar, int length) {
+    if (length <= 0) return;
+    for (int i=0; i<length; i++)
+        putchar(paddingChar);
+}
+
+void printf(const char *format, ...) {
+
+    va_list arg;
+    va_start(arg, format);
+
+    char *string;
+
+    for (string=format; *string != '\0'; string++) {
+        if ( *string == '%' ) {
+            string++;
+
+            int padding = 0;
+            for (; is_digit(*string); string++) {
+                if (padding != 0)
+                    padding *= 10;
+                padding += _atoi(*string);
             }
 
-          if (c >= '0' && c <= '9')
-            {
-              pad = c - '0';
-              c = *format++;
+            char retstr[50];
+            int dec = 0;
+            int base = 0;
+            char *str;
+
+            char paddingChar;
+            if ( *string == 'b' || *string == 'd' || *string == 'o' || *string == 'x' ) {
+                paddingChar = '0';
+                dec = va_arg(arg, int);
+            } 
+
+            switch ( *string ) {
+                case 'c':
+                    putchar(dec);
+                    break;
+                case 'd':
+                    base = 10;
+                    break;
+                case 'o':
+                    base = 8;
+                    break;
+                case 'b':
+                    base = 2;
+                    break;
+                case 's':
+                    paddingChar = ' ';
+                    str = va_arg(arg, char *);
+                    break;
+                case 'x':
+                    base = 16;
+                    break;
+                default:
+                    putchar(*string);
             }
 
-          switch (c)
-            {
-            case 'd':
-            case 'u':
-            case 'x':
-              itoa (buf, c, *((int *) arg++));
-              p = buf;
-              goto string;
-              break;
-
-            case 's':
-              p = *arg++;
-              if (! p)
-                p = "(null)";
-
-            string:
-              for (p2 = p; *p2; p2++);
-              for (; p2 < p + pad; p2++)
-                putchar (pad0 ? '0' : ' ');
-              while (*p)
-                putchar (*p++);
-              break;
-
-            default:
-              putchar (*((int *) arg++));
-              break;
+            if (base != 0) {
+                str = _itoa(dec, base, retstr);
             }
+
+            for (; padding > str_len(str); padding--)
+                putchar(paddingChar);
+
+            for (; *str != '\0'; str++)
+                putchar(*str);
+
+            string++;
         }
+
+        putchar(*string);
     }
 }

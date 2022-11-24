@@ -8,7 +8,7 @@
 #define PIC2_COMMAND 0xA0
 #define PIC2_DATA	 0xA1
 
-#define PIC1_OFFSET  0x20
+#define PIC1_OFFSET  0x20 // Up to 0x1F taken by x86_64
 #define PIC2_OFFSET	 0x28
 
 //Defining values passed to PIC
@@ -44,9 +44,18 @@ __attribute__((aligned(0x10)))
 static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
 
 //Interrupt handlers
-void exception_handler(void);
-void exception_handler() {
+__attribute__((interrupt));
+void exception_handler(uint8_t interrupt_index) {
+	printf("Recoverable interrupt %d\n", interrupt_index);
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
+}
+
+
+__attribute__((interrupt));
+void panic(uint8_t interrupt_index) {
+	__asm__ volatile ("cli");
+	printf("Non recoverable interrupt %d, PANIC PANIC PANIC\n", interrupt_index);
+	__asm__ volatile ("hlt");
 }
 
 __attribute__((interrupt));
@@ -104,39 +113,28 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
 }
 
 
-
-// Currently just sets IDT #9 for keyboard input
+extern void *isr_stub_table[];
 void idt_init() {
 	idtr.base = (uint64_t)&idt[0];
 	idtr.limit = (uint16_t)sizeof(idt_entry_t) * 255 - 1;
 
-	// Configure PIC, unmask IRQ 1
-    // idt_set_descriptor(8, &kb_int, 0x8E);
-
-	for (int i=0; i<16; i++) {
-		idt_set_descriptor(i, &interrupt_handler, IDT_TA_InterruptGate);
+	for (int i=0; i<32; i++) {
+		idt_set_descriptor(i, isr_stub_table[i], IDT_TA_InterruptGate);
 	}
 
-	idt_set_descriptor(0x0E, &pagefault_handler, IDT_TA_InterruptGate);
-    idt_set_descriptor(0x08, &doublefault_handler, IDT_TA_InterruptGate);
+    // idt_set_descriptor(0x08, &doublefault_handler, IDT_TA_InterruptGate);
 	idt_set_descriptor(0x0D, &gpfault_handler, IDT_TA_InterruptGate);
-
-	__asm__ volatile("lidt %0" : : "m"(idtr));
 	
 	remapPIC();
 
 	//KB stuff
-	outb(PIC1_DATA, 0b11111101); // Enabling keyboard
+	outb(PIC1_DATA, 0b11111101); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 
 	idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
 
+	__asm__ volatile("lidt %0" : : "m"(idtr));
 	__asm__ volatile("sti");
 }
-
-typedef enum {
-	MASTER,
-	SLAVE
-} PIC_TYPE;
 
 // IO functions - for communicating on IO bus
 void picEOI(unsigned char irq) {
