@@ -16,7 +16,7 @@ start:
 
     mov dword [mbootstruct], ebx
 
-    mov esp, stk_top ; Init stack pointer
+    mov esp, stk_top_boot ; Init stack pointer
 
     ; Switch to long mode
     call check_multiboot
@@ -29,10 +29,10 @@ start:
     ; Processor now mapping virtual addresses
     ; Virtual address 0xC000 0000 = 1100 0000 0000 0000   0000 0000 0000 0000  ->  0000 0000 0000 0000   0000 0000 0000 0000
 
-    lgdt [gdt64.pointer] ; GDT is at address 
+    lgdt [boot_gdt64.pointer] ; GDT is at address 
     
     ;; Jumping from compatibility mode to long mode
-    jmp gdt64.code_segment:long_mode_start ;; Long jump to 64 bit segment
+    jmp boot_gdt64.code_segment:long_mode_start ;; Long jump to 64 bit segment
 
 
     hlt ; Hang
@@ -96,15 +96,16 @@ init_page_tables:
     ; identity mapping phys = virt
     ; paging enabled automatically when long mode is enabled
     ; Must transform addresses since .bss thinks it's at virtual address already but we need physical addresses for this stage
-    mov eax, page_table_l3
+    mov eax, page_table_l3_boot
     or eax, 0b11
-    mov [(page_table_l4)], eax ;
-    mov [(page_table_l4 + (511*8))], eax ;; move l3 into high address space too
+    mov [(page_table_l4_boot)], eax ;
+    ;; Higher half mapping
+    mov [(page_table_l4_boot + (511*8))], eax ;; move l3 into high address space too
 
-    mov eax, page_table_l2
+    mov eax, page_table_l2_boot
     or eax, 0b11
-    mov [page_table_l3], eax
-    mov [page_table_l3 + (510*8)], eax ;; Move into correct index of l3
+    mov [page_table_l3_boot], eax
+    mov [page_table_l3_boot + (510*8)], eax ;; Move into correct index of l3
 
     mov ecx, 0
 loop:
@@ -114,16 +115,16 @@ loop:
     or eax, 0b10000011 ; Modifying flags of entry
 
 
-    mov [(page_table_l2) + ecx * 8], eax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
+    mov [(page_table_l2_boot) + ecx * 8], eax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
 
     inc ecx
     cmp ecx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
     jne loop
 
     ;; Mapping page table to itself
-    mov eax, page_table_l4
+    mov eax, page_table_l4_boot
     or eax, 0b11
-    mov [page_table_l3 + (511*8)], eax
+    mov [page_table_l3_boot + (511*8)], eax
     ; mov [page_table_l3 + (1023*4)], eax
     ; mov eax, 0xFFFFFFFF
     ; mov [page_table_l3 + (1022*4)], eax
@@ -139,7 +140,7 @@ enable_paging:
     mov cr4, eax
 
     ; Loading cr3 with phys address of PML4
-    mov eax, (page_table_l4)
+    mov eax, (page_table_l4_boot)
     mov cr3, eax
 
     ; Enable long mode
@@ -163,29 +164,29 @@ error:
     mov byte [0xb800A], al
     hlt     ; Hang
 
-section .bss ;; block started by symbol, linker sets bytes to 0
+section .boot_bss ;; block started by symbol, linker sets bytes to 0
 align 4096
-page_table_l4:
+page_table_l4_boot:
     resb 4096
-page_table_l3:
+page_table_l3_boot:
     resb 4096
-page_table_l2:
+page_table_l2_boot:
     resb 4096
-stk_bott:
+stk_bott_boot:
     resb 4096 * 4
-stk_top:
+stk_top_boot:
 
 ; GDT
 global mbootstruct
-section .rodata
+section .boot_rodata
 bits 64
-gdt64:
+boot_gdt64:
 	dq 0 ; zero entry 
-.code_segment: equ $ - gdt64
+.code_segment: equ $ - boot_gdt64
 	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
 .pointer:
-	dw $  - gdt64 - 1 ; length
-	dq gdt64 ; address
+	dw $  - boot_gdt64 - 1 ; length
+	dq boot_gdt64 ; address
 
 mbootstruct:
     dq 0 ;; Reserved for multiboot struct information

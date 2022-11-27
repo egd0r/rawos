@@ -35,11 +35,103 @@ long_mode_start:
     mov ecx, 500                  ; Set the C-register to 500.
     rep stosq                     ; Clear the screen.
 
-    
+    call MapPages
+    mov dword [0xb8000], 0x2f6b2f4f
+
+    ;; Higher half page tables are now initialised
+
     mov qword rdi, [mbootstruct] ; Passing struct to C function
     call qword kmain
 
     hlt
+
+MapPages:
+    mov rax, page_table_l3
+    or rax, 0b11
+    mov rbx, 0xFFFFFFFFFFFFFFFF
+    and rax, rbx ;; Flipping NX
+
+    mov [(page_table_l4)], rax
+    mov [(page_table_l4 + (511*8))], rax ;; move l3 into high address space too
+
+    mov rax, page_table_l2
+    or rax, 0b11
+    mov rbx, 0xFFFFFFFFFFFFFFFF
+    and rax, rbx ;; Flipping NX
+    mov [page_table_l3], rax
+    mov [page_table_l3 + (510*8)], rax
+
+    mov rcx, 0
+.loop:
+    mov rax, 0x00200000 ; Mapping from 2MB into memory
+    mul rcx           ; Mapping 2MB * n from memory and placing in page table  
+    or rax, 0b10000011 ; Modifying flags of entry
+
+    mov [(page_table_l2) + (rcx * 8)], rax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
+
+    inc rcx
+    cmp rcx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
+    jne .loop
+
+    ;; Mapping page table to itself
+    mov rax, page_table_l4
+    or rax, 0b11
+    mov rbx, 0xFFFFFFFFFFFFFFFF
+    and rax, rbx ;; Flipping NX
+    mov [page_table_l3 + (511*8)], rax
+
+; KERNEL_OFFSET =           0xFFFFFFFF80000000;
+    ;; Disable paging
+    ; mov rax, cr0
+    ; and rax, ~(1 << 31)
+    ; mov cr0, rax
+
+    ; mov rax, cr3
+
+    ; mov cr3, rax
+    
+    ; ;; Update physical address of table
+
+    mov rax, (page_table_l4-0xFFFFFFFF80000000)
+
+
+    ; ; ;; Re-enable paging
+    ; mov rax, cr0
+    ; or rax, 1 << 31
+    ; mov cr0, rax
+
+
+    ; mov dword [0xb8000], 0x2f6b2f4f
+
+    ; hlt
+    ret
+
+
+
+;; Actual page tables inherited by first process defined here
+section .bss ;; block started by symbol, linker sets bytes to 0
+align 4096
+page_table_l4:
+    resb 4096
+page_table_l3:
+    resb 4096
+page_table_l2:
+    resb 4096
+stk_bott:
+    resb 4096 * 4
+stk_top:
+
+section .rodata
+gdt64:
+	dq 0 ; zero entry 
+.code_segment: equ $ - gdt64
+	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
+.pointer:
+	dw $  - gdt64 - 1 ; length
+	dq gdt64 ; address
+
+
+
 
 section .text
 ;; Interrupt jazz

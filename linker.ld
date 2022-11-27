@@ -12,12 +12,13 @@ SECTIONS
     {
         KEEP(*(.multiboot2_header))
         *(.bootstrap)
-        *(.bss)
-        *(.rodata)
+        *(.boot_bss)
+        *(.boot_rodata)
     }
 
     . += KERNEL_OFFSET;
 
+    /* Forget about boot stuff when in here */
     .text : AT(ADDR(.text) - KERNEL_OFFSET)
     {
         _code = .;

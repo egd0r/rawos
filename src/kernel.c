@@ -28,8 +28,11 @@ int kmain(unsigned long mbr_addr) {
     // Initialise IDT
 
     idt_init();
+
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
+
+    // asm volatile ("mov %rax, %cr3");
 
     cls();
 
