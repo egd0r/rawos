@@ -5,6 +5,8 @@ void printf (const char *format, ...);
 #include "interrupts.c"
 #include "stdarg.h"
 
+#include "paging.h"
+
 #define VIDEO 0xb8000
 static volatile unsigned char *video;
 
@@ -20,14 +22,10 @@ static void putchar (int c);
 static int xpos = 0;
 static int ypos = 0;
 
-// extern void idt_init();
-
-
 //Try and parse tag without framebuffer enabled
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
 int kmain(unsigned long mbr_addr) {
     // Initialise IDT
-    // idt_init();
 
     idt_init();
     // Map pages? Already got 16MB identity mapped
@@ -35,16 +33,23 @@ int kmain(unsigned long mbr_addr) {
 
     cls();
 
+
     // printf("\n");
+  
 
-   
-
-    *((int *)0xb8000) = 0x2e6b2f4f; // Ok
     printf("OK!\n");
+
+
+    //Trying to deref page directory
+    uint64_t *pd = PAGE_DIR_VIRT;
+    uint64_t pe = *pd;
+
 
     *((int *)0xb8900) = mbr_addr;   // print address
     // *((int *)0xb8900) = 0x00000000;
 
+
+    // Attempting to parse multiboot information structure
     uint32_t size; // information struct is 8 bytes aligned, each field is u32 
     size = *((uint32_t *)mbr_addr); // First 8 bytes of MBR 
 

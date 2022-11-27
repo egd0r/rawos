@@ -36,13 +36,12 @@ long_mode_start:
     rep stosq                     ; Clear the screen.
 
     
-    xor rdi, rdi ;; Clearing RDI, is this necessary?
     mov qword rdi, [mbootstruct] ; Passing struct to C function
-    call kmain
+    call qword kmain
 
     hlt
 
-
+section .text
 ;; Interrupt jazz
 extern exception_handler
 extern panic

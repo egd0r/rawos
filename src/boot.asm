@@ -90,6 +90,8 @@ check_long:
     jmp error
 
 ; Init pages and identity map first 16MB 
+;; Maps same 16MB to higher address space and:
+;; Maps page table to itself
 init_page_tables:
     ; identity mapping phys = virt
     ; paging enabled automatically when long mode is enabled
@@ -97,10 +99,12 @@ init_page_tables:
     mov eax, page_table_l3
     or eax, 0b11
     mov [(page_table_l4)], eax ;
+    mov [(page_table_l4 + (511*8))], eax ;; move l3 into high address space too
 
     mov eax, page_table_l2
     or eax, 0b11
     mov [page_table_l3], eax
+    mov [page_table_l3 + (510*8)], eax ;; Move into correct index of l3
 
     mov ecx, 0
 loop:
@@ -115,6 +119,14 @@ loop:
     inc ecx
     cmp ecx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
     jne loop
+
+    ;; Mapping page table to itself
+    mov eax, page_table_l4
+    or eax, 0b11
+    mov [page_table_l3 + (511*8)], eax
+    ; mov [page_table_l3 + (1023*4)], eax
+    ; mov eax, 0xFFFFFFFF
+    ; mov [page_table_l3 + (1022*4)], eax
 
     ret
 

@@ -1,34 +1,35 @@
 ENTRY(start)
 OUTPUT_FORMAT(elf64-x86-64)
 
+KERNEL_OFFSET = 0xFFFFFFFF80000000;
+KERNEL_START = 0x10000;
+
 SECTIONS
 {
-    . = 1M; /* Load 1MB in to enable pagin and shift to long mode */
+    . = KERNEL_START; /* Load 1MB in to enable pagin and shift to long mode */
 
-    boot : 
+    boot : AT(ADDR(boot)) /* At 1MB */  
     {
         KEEP(*(.multiboot2_header))
         *(.bootstrap)
+        *(.bss)
+        *(.rodata)
     }
 
-    .text : AT(ADDR(.text))
+    . += KERNEL_OFFSET;
+
+    .text : AT(ADDR(.text) - KERNEL_OFFSET)
     {
         _code = .;
         *(.text)
+        *(.eh_frame)
         . = ALIGN(4096);
     }
 
-   .data : AT(ADDR(.data))
-   {
-        _data = .;
-        *(.data)
-        . = ALIGN(4096);
-   }
-
-   .bss : AT(ADDR(.bss))
+   .bss : AT(ADDR(.bss) - KERNEL_OFFSET)
    {
        _bss = .;
-       *(.bss)
+       *(.bss*)
         *(.rodata*)
 
        /*
@@ -41,10 +42,4 @@ SECTIONS
    }
 
    _end = .;
-
-   /DISCARD/ :
-   {
-        *(.comment)
-   }
 }
-

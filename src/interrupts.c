@@ -86,7 +86,9 @@ __attribute__((interrupt));
 void kb_handler() {
 	__asm__ volatile ("cli");
 	uint8_t scode = inb(PS2_PORT);
-	printf("%d\n", scode); // Move program counter down to skip offending instruction??
+	printf("%d\n", scode); 
+	// Eventually spawn a new process to handle the input of keyboard keys
+	// For now can decode code here and place on screen
 	picEOI(0x21-PIC1_OFFSET);
 	__asm__ volatile ("sti");
 }
