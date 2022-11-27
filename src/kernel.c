@@ -5,7 +5,7 @@ void printf (const char *format, ...);
 #include "interrupts.c"
 #include "stdarg.h"
 
-#include "paging.h"
+#include "paging.c"
 
 #define VIDEO 0xb8000
 static volatile unsigned char *video;
@@ -42,7 +42,7 @@ int kmain(unsigned long mbr_addr) {
 
     //Trying to deref page directory
     uint64_t *pd = PAGE_DIR_VIRT;
-    uint64_t pe = *pd;
+    get_physaddr(PAGE_DIR_VIRT);
 
 
     *((int *)0xb8900) = mbr_addr;   // print address
