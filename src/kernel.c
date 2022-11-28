@@ -7,7 +7,8 @@ void printf (const char *format, ...);
 
 #include "paging.c"
 
-#define VIDEO 0xb8000
+#define KERNEL_VIRT 0xFFFFFFFF80000000
+#define VIDEO 0xb8000+KERNEL_VIRT // Using vid base+virt since we're now in higher half ;)
 static volatile unsigned char *video;
 
 #define COLUMNS 80
@@ -32,7 +33,9 @@ int kmain(unsigned long mbr_addr) {
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
 
-    // asm volatile ("mov %rax, %cr3");
+    unmap_page(0x0); //Unmapping first 16MB 
+
+    // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
     cls();
 

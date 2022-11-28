@@ -46,18 +46,14 @@ long_mode_start:
     hlt
 
 MapPages:
-    mov rax, page_table_l3
+    mov rax, (page_table_l3-0xFFFFFFFF80000000)
     or rax, 0b11
-    mov rbx, 0xFFFFFFFFFFFFFFFF
-    and rax, rbx ;; Flipping NX
 
     mov [(page_table_l4)], rax
     mov [(page_table_l4 + (511*8))], rax ;; move l3 into high address space too
 
-    mov rax, page_table_l2
+    mov rax, (page_table_l2-0xFFFFFFFF80000000)
     or rax, 0b11
-    mov rbx, 0xFFFFFFFFFFFFFFFF
-    and rax, rbx ;; Flipping NX
     mov [page_table_l3], rax
     mov [page_table_l3 + (510*8)], rax
 
@@ -73,12 +69,18 @@ MapPages:
     cmp rcx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
     jne .loop
 
-    ;; Mapping page table to itself
-    mov rax, page_table_l4
+    ;; Mapping page directory to itself
+    mov rax, (page_table_l2-0xFFFFFFFF80000000)
     or rax, 0b11
-    mov rbx, 0xFFFFFFFFFFFFFFFF
-    and rax, rbx ;; Flipping NX
-    mov [page_table_l3 + (511*8)], rax
+    mov [page_table_l3 + (511*8)], rax ;; Last L3 mapped here to L2
+
+    mov rax, (page_table_l1-0xFFFFFFFF80000000)
+    or rax, 0b11
+    mov [page_table_l2 + (511*8)], rax ;; Last entry of l2 maps to l1
+
+    mov rax, (page_table_l4-0xFFFFFFFF80000000)
+    or rax, 0b11
+    mov [page_table_l1 + (511*8)], rax ;; Last entry of l1 holds physical address of l4
 
 ; KERNEL_OFFSET =           0xFFFFFFFF80000000;
     ;; Disable paging
@@ -93,6 +95,10 @@ MapPages:
     ; ;; Update physical address of table
 
     mov rax, (page_table_l4-0xFFFFFFFF80000000)
+    mov cr3, rax
+
+    ;; Update CR3 here
+
 
 
     ; ; ;; Re-enable paging
@@ -116,6 +122,8 @@ page_table_l4:
 page_table_l3:
     resb 4096
 page_table_l2:
+    resb 4096
+page_table_l1:
     resb 4096
 stk_bott:
     resb 4096 * 4
