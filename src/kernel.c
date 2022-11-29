@@ -1,11 +1,11 @@
 void printf (const char *format, ...);
 
-#include "types.h"
-#include "vga.h"
-#include "multiboot2.h"
-#include "interrupts.h"
-#include "stdarg.h"
-#include "paging.h"
+#include "headers/types.h"
+#include "headers/vga.h"
+#include "headers/multiboot2.h"
+#include "headers/interrupts.h"
+#include "headers/stdarg.h"
+#include "headers/paging.h"
 
 static int xpos = 0;
 static int ypos = 0;

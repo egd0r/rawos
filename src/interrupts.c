@@ -1,5 +1,5 @@
-#include "interrupts.h"
-#include "vga.h" // For prints
+#include "headers/interrupts.h"
+#include "headers/vga.h" // For prints
 
 static idtr_t idtr;
 
