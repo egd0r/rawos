@@ -13,6 +13,7 @@ kernel:
 	gcc $(CFLAGS) -c $(SRCPATH)/kernel.c -o $(OBJPATH)/kernel.o
 	gcc $(CFLAGS) -c $(SRCPATH)/interrupts.c -o $(OBJPATH)/interrupts.o
 	gcc $(CFLAGS) -c $(SRCPATH)/paging.c -o $(OBJPATH)/paging.o
+	gcc $(CFLAGS) -c $(SRCPATH)/memory.c -o $(OBJPATH)/memory.o
 
 	ld --no-relax -n -o kernel.bin -T linker.ld obj/*.o
 	cp kernel.bin boot/kernel.bin

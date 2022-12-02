@@ -13,6 +13,7 @@ long_mode_start:
     mov es, ax
     mov fs, ax
     mov gs, ax
+    mov rsp, stk_top; Init stack pointer
 
     mov qword [0xb8228], rbx
     
@@ -66,8 +67,10 @@ MapPages:
     mov [(page_table_l2) + (rcx * 8)], rax ; 8 bytes per entry. This is important for PAE 64-bit where 0-63 are used as address
 
     inc rcx
-    cmp rcx, 8 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
+    cmp rcx, 9 ; Map 8 entries providing 2MB * 8 = 16MB of mappings for the kernel initially, more than enough (hopefully lol)
+               ; +1 for 2MB physical bitmap
     jne .loop
+
 
     ;; Mapping page directory to itself
     mov rax, (page_table_l2-0xFFFFFFFF80000000)

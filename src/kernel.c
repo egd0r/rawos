@@ -7,8 +7,7 @@ void printf (const char *format, ...);
 #include "headers/stdarg.h"
 #include "headers/paging.h"
 
-static int xpos = 0;
-static int ypos = 0;
+#include "headers/memory.h"
 
 //Try and parse tag without framebuffer enabled
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
@@ -19,19 +18,19 @@ int kmain(unsigned long mbr_addr) {
 
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
+    cls();
+    struct multiboot_tag_mmap *ret = init_memory_map(mbr_addr);
 
     unmap_page(0x0); //Unmapping first 16MB 
 
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
-    cls();
 
 
     // printf("\n");
   
 
     printf("OK!\n");
-
 
     //Trying to deref page directory
     uint64_t *pd = PAGE_DIR_VIRT;
@@ -42,39 +41,6 @@ int kmain(unsigned long mbr_addr) {
     // *((int *)0xb8900) = 0x00000000;
 
 
-    // Attempting to parse multiboot information structure
-    uint32_t size; // information struct is 8 bytes aligned, each field is u32 
-    size = *((uint32_t *)mbr_addr); // First 8 bytes of MBR 
-
-    struct multiboot_tag *tag;
-    tag = (struct multiboot_tag *)(mbr_addr + 8); // u32+u32 = 64 = 8 bytes for next tag
-
-    uint32_t tagType = tag->type;
-    uint32_t tagSize = tag->size;
-
-    struct multiboot_tag_framebuffer_common *fb;
-
-    for (; tag->type != MULTIBOOT_TAG_TYPE_END; tag += 8) {
-      if (tag->type == MULTIBOOT_TAG_TYPE_BASIC_MEMINFO) {
-        struct multiboot_tag_basic_meminfo *basicInfo = tag;
-        uint32_t mem_lower = basicInfo->mem_lower;
-        uint32_t mem_upper = basicInfo->mem_upper;
-      }
-      if (tag->type == MULTIBOOT_TAG_TYPE_BOOTDEV) {
-        struct multiboot_tag_bootdev *bootDevice = tag;
-        uint32_t biosdev = bootDevice->biosdev;
-        uint32_t part = bootDevice->part;
-        uint32_t subPart = bootDevice->slice;
-      }
-      if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
-        fb = tag;
-        uint64_t fb_phys = fb->framebuffer_addr;
-      }
-      if (tag->type == MULTIBOOT_HEADER_TAG_INFORMATION_REQUEST) {
-        struct multiboot_header_tag_information_request *infoReq = tag;
-        uint32_t *types = infoReq->requests;
-      }
-    }
 
 
     printf("SPINNING!\n"); 
@@ -92,7 +58,7 @@ int kmain(unsigned long mbr_addr) {
     return 0;
 }
 
-static void
+void
 cls (void)
 {
   int i;
@@ -108,7 +74,7 @@ cls (void)
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
 /*  Put the character C on the screen. */
-static void
+void
 putchar (int c)
 {
   if (c == '\n' || c == '\r')

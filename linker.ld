@@ -42,5 +42,6 @@ SECTIONS
        . = ALIGN(4096);
    }
 
-   _end = .;
+   KERNEL_END = . - KERNEL_OFFSET; /* Need to make note of what physical memory 
+                                is taken up by the kernel to know where bitmap can go */ 
 }
