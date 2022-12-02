@@ -106,11 +106,14 @@ uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
 void map_physical_pages(int allocated, int length) {
 
     int i=0;
-    for (i=0; i<length/PHYSICAL_PAGE_SIZE/64; i++, currentBitmapPtr++) {
+    //
+    // CHECK CALCULATION BELOW... /8 for 8 bytes
+    //
+    for (i=0; i<length/PHYSICAL_PAGE_SIZE/8; i++, currentBitmapPtr++) {
         *currentBitmapPtr = allocated == 1 ? PHYSICAL_PAGE_ALLOCATED : PHYSICAL_PAGE_FREE;
     }
     
-    printf("Iterating through %d chunks of 8 bytes\n", length/PHYSICAL_PAGE_SIZE/64);
+    printf("Iterating through %d chunks of 8 bytes\n", length/PHYSICAL_PAGE_SIZE/8);
     printf("%d physical pages mapped as %d\n", i*64, allocated);
 }
 
