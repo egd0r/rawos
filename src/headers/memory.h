@@ -17,3 +17,6 @@ extern uint64_t KERNEL_END;
 // void *physicalPageSP;
 
 struct multiboot_tag_mmap *init_memory_map(void *mbr_addr);
+
+void * kalloc_physical(uint64_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
+void kfree_physical(void *ptr);

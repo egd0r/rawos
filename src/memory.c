@@ -34,7 +34,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
 
     int largestFreeSize = 0;
 
-    printf("Kernel starts phyaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
+    // printf("Kernel starts physaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
     for (tag = (struct multiboot_tag*) (mbr_addr + 8);
          tag->type != MULTIBOOT_TAG_TYPE_END;
          tag = (struct multiboot_tag*) ((multiboot_uint8_t *) tag
@@ -58,35 +58,15 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                         mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
                             + mmapTag->entry_size), i++)
                 {
-                    printf("Memory area starting at %x with "
-                            "length of %x and type %x\n",
-                            (mmap->addr),
-                            (mmap->len),
-                            mmap->type);
+                    // printf("Memory area starting at %x with "
+                            // "length of %x and type %x\n",
+                            // (mmap->addr),
+                            // (mmap->len),
+                            // mmap->type);
 
 
                     // With each mmap, size / 4096 is set as either 1s or 0s in bitmap
-
-    
-                    if ( (mmap->type == 1) && (mmap->len > largestFreeSize) ) {
-                        largestFreeSize = mmap->len;
-                        BITMAP_base = mmap->addr;
-                        BITMAP_end = mmap->addr + mmap->len;
-                    }
-
-
-                    
-
-
-                    // TRYING STACK BASED APPROACH HERE?? UNFINISHED - REFER TO BOOK OF Qs
-                    phys_mem_regions[i]->start = mmap->addr;
-                    phys_mem_regions[i]->sp = mmap->addr;
-                    phys_mem_regions[i]->end = mmap->addr + mmap->len;
-
-                    if (mmap->type != 1)
-                        phys_mem_regions[i] = 1;
-
-
+                    map_physical_pages(mmap->type == 1 ? 0 : 1, mmap->len, mmap->addr);
                 }
 
                 break;
@@ -94,28 +74,84 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                 //kprintf("Unkown tag %x, size %x\n", tag->type, tag->size);
                 break;
         }
+
+        //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
+        map_physical_pages(1, &KERNEL_END-&KERNEL_START, &KERNEL_START);
     }
 
-    map_physical_pages(1, largestFreeSize);
 }
 
 /*
     Uses global variable to iterate through bitmap and set bits as allocated
+    // Length in bytes
 */
-uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
-void map_physical_pages(int allocated, int length) {
+
+void set_bit(uint64_t addr, uint64_t bit) {
+    int bitIndex = (addr % 0x40000)/PHYSICAL_PAGE_SIZE;
+    int pageIndex = (addr/0x40000)-1;
+
+    if (pageIndex > 0x20000) return; // Passed max
+
+    ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | bit<<bitIndex;
+}
+
+void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
+    if (!allocated) return; // Why make 0s 0s? Only run for allocations
+    uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
+
 
     int i=0;
     //
-    // CHECK CALCULATION BELOW... /8 for 8 bytes
+    // DK if this could lead to still allocating 1s as free... Solution:
     //
-    for (i=0; i<length/PHYSICAL_PAGE_SIZE/8; i++, currentBitmapPtr++) {
-        *currentBitmapPtr = allocated == 1 ? PHYSICAL_PAGE_ALLOCATED : PHYSICAL_PAGE_FREE;
+    int numberOfPages = (length / PHYSICAL_PAGE_SIZE) + allocated;
+
+    for (i=0; i<numberOfPages; i++) {
+        set_bit(base+(i*4096), allocated);
     }
+
+    BITMAP_end = base+i;
+
     
-    printf("Iterating through %d chunks of 8 bytes\n", length/PHYSICAL_PAGE_SIZE/8);
-    printf("%d physical pages mapped as %d\n", i*64, allocated);
+    // printf("%d actual physical pages mapped as %d\n", i, allocated);
 }
 
-void kalloc_physical(uint64_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
-void kfree_physical(uint64_t size);
+
+
+void * kalloc_physical(uint64_t size) {
+    // Loops through and finds free space, returns memory address
+
+    int counter = 0;
+    // Need to keep track of when counter goes from 0 -> 1 (start, value to return)
+    // Need to return start of map, that is all but set bits at that physical address before with lovely function
+    void *ret;
+    for (int i=0; i<0x20000; i++) {
+        uint64_t pages = ((uint64_t *)BITMAP_VIRTUAL)[i];
+        for (int ii=0; ii<64; ii++) {
+            int page = pages >> ii | pages & ~0x1; // Extract last bit
+            if (page == PHYSICAL_PAGE_FREE) {
+                if (counter == 0) {
+                    ret = i*0x40000 + ii*4096; 
+                }
+                counter++;
+                if (counter == size) {
+                    //Map size at start
+                    for (int i=0; i<size/PHYSICAL_PAGE_SIZE; i++)
+                        set_bit(ret, 1);
+                    return ret;
+                }
+
+            } else {
+                counter=0;
+            } 
+        }
+    }
+
+    printf("No space for this allocation.");
+    return ret;
+}
+
+// Only needs to free individual pages, virtual mem manager keeping track of physical allocations given to it!
+void kfree_physical(void *ptr) {
+    set_bit(ptr, 0);
+}

@@ -174,6 +174,7 @@ page_table_l2_boot:
     resb 4096
 stk_bott_boot:
     resb 4096 * 4
+    resb 4096 * 4
 stk_top_boot:
 
 ; GDT

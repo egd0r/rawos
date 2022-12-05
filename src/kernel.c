@@ -14,6 +14,8 @@ void printf (const char *format, ...);
 int kmain(unsigned long mbr_addr) {
     // Initialise IDT
 
+    asm __volatile__("mov %rsp, [stk_top]");
+
     idt_init();
 
     // Map pages? Already got 16MB identity mapped
@@ -21,7 +23,15 @@ int kmain(unsigned long mbr_addr) {
     cls();
     struct multiboot_tag_mmap *ret = init_memory_map(mbr_addr);
 
-    unmap_page(0x0); //Unmapping first 16MB 
+    // Allocate at 0
+    uint64_t ptr = kalloc_physical(1);
+    // Free at 0
+    kfree_physical((void *)ptr);
+
+    // Getting 1 byte (1 page) from physical memory
+    printf("%x\n", ptr);
+
+    // unmap_page(0x0); //Unmapping first 16MB 
 
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 

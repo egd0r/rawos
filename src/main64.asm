@@ -119,6 +119,8 @@ MapPages:
 
 ;; Actual page tables inherited by first process defined here
 section .bss ;; block started by symbol, linker sets bytes to 0
+global stk_top
+global stk_bott
 align 4096
 page_table_l4:
     resb 4096
