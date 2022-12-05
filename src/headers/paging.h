@@ -17,7 +17,7 @@ void get_physaddr(void *virt_addr);
 void unmap_page(unsigned long long virt_addr);
 
 // Uses malloc to allocate heap
-// Must be contiguous in virtual memory
+// Must be contiguous in virtual memory... space for malloc
 void * create_heap(); 
 
 void * malloc(size_t size);
