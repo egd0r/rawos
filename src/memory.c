@@ -86,6 +86,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
     // Length in bytes
 */
 
+// For allocating one page of physical memory, most likely used
 void set_bit(uint64_t addr, uint64_t bit) {
     int bitIndex = (addr % 0x40000)/PHYSICAL_PAGE_SIZE;
     int pageIndex = (addr/0x40000)-1;
@@ -116,9 +117,8 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
     // printf("%d actual physical pages mapped as %d\n", i, allocated);
 }
 
-
-
-void * kalloc_physical(uint64_t size) {
+// For contiguous physical allocations, DMA etc
+void * kalloc_physical(size_t size) {
     // Loops through and finds free space, returns memory address
 
     int counter = 0;
