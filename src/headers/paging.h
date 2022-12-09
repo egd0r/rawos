@@ -10,7 +10,7 @@
 
 #define PRESENT     0x01
 #define RW          0x02
-#define HUGE_PAGE   0x80
+#define HUGE_PAGE   0x08
 #define FLAGS       0xFFF
 
 void get_physaddr(void *virt_addr);
@@ -20,5 +20,23 @@ void unmap_page(unsigned long long virt_addr);
 // Must be contiguous in virtual memory... space for malloc
 void * create_heap(); 
 
-void * malloc(size_t size);
+void * kalloc(size_t size);
 void free(void *ptr); // References allocation with size
+
+// Allows heap to be non-contiguous in physical memory
+// Will try to allocate contigious pages
+typedef struct HEAP {
+    void *startOfHeap;
+    heap_t *nextHeap;
+} heap_t;
+
+heap_t heapStart;
+
+/*
+    malloc:
+        -> sbrk() increases heap size
+        -> allocate new page
+        -> new free space
+
+
+*/

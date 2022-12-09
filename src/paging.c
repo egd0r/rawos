@@ -18,6 +18,9 @@ void get_physaddr(void *virt_addr) {
 
 }
 
+/*
+    Unmap identity mapped regions
+*/
 void unmap_page(unsigned long long virt_addr) {
 
     // Deconstruct virtual address
@@ -50,6 +53,56 @@ void unmap_page(unsigned long long virt_addr) {
 
 }
 
-void *allocate_page() { // Walk pages and return address of free page?
+// Creates heap of size ? 
+void * create_heap() {
 
+}
+
+void * kalloc(size_t size) {
+
+}
+
+// When out of pages, allocate with kalloc_physical macro and add to page entry
+uint64_t allocate_page() { // Walk pages and return address of free page? Will allocate contiguous pages
+                        // If allocation is unsuccessful, then NULL is returned
+
+    uint64_t pageSize = 0x40000000; // Start with 1GiB HUGEPAGE - indexed at L3
+                                    // L2 indexes - 2MiB
+                                    // L1 indexes - 4KiB
+
+    uint64_t virtualAddress = 0;       
+    // Loops through page directory
+    (uint64_t **)page_dir = (*((uint64_t *)PAGE_DIR_VIRT));
+
+    (uint64_t **)page_table_entryl3;
+
+    for (int i=0; i<512*8 || !(page_dir & PRESENT); i++) {
+        page_table_entryl3 = page_dir[]
+    }
+
+    
+
+    // 512 entries in each page table - just check present flag
+}
+
+// Recursively allocates pages
+// Takes index of page table to search
+// Returns free space
+uint64_t allocate_page_rec(uint64_t **pt, uint64_t addr) {
+
+    
+    for (int i=0; i<512; i++) {
+        if (pt[i] & HUGE_PAGE) { // If this page is hugepage
+            addr << i;
+            return addr;
+        }
+    }
+}
+
+// Last entry of PML4 is mapped to itself allowing easy index into all page tables
+
+
+// Function creates virtual address from entries into page tables
+void *vaddr_from_entries(size_t pml4e, size_t pdpte, size_t pde, size_t pte, size_t offset) {
+    return (void *)((pml4e << 39) | (pdpte << 30) | (pde << 21) | (pte << 12) | offset);
 }
