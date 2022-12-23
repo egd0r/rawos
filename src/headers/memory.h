@@ -18,3 +18,13 @@ struct multiboot_tag_mmap *init_memory_map(void *mbr_addr);
 
 void * kalloc_physical(size_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
 void kfree_physical(void *ptr);
+void memset(uint64_t ptr, uint8_t val, size_t size);
+
+// Allows heap to be non-contiguous in physical memory
+// Will try to allocate contigious pages
+typedef struct HEAP {
+    void *startOfHeap;
+    heap_t *nextHeap;
+} heap_t;
+
+heap_t heapStart; //Starts at end

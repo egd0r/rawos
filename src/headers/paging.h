@@ -1,6 +1,6 @@
 #pragma once
 #include "types.h"
-#define PAGE_DIR_VIRT 0xFFFFFFFFBFFFF000 // Last entry in L1 maps to L4, indexing this address gives PDEs
+#define PAGE_DIR_VIRT 0xFFFFFFFFFFFFF000 // Last entry in L1 maps to L4, indexing this address gives PDEs
                     //0xFFFFFFFFC0000000
 /*                                L3        L2        L1          
     Page Dir Virt = 0xFFFF  1111 1111 1111 1111 1111 1111 11    
@@ -12,31 +12,39 @@
 #define RW          0x02
 #define HUGE_PAGE   0x08
 #define FLAGS       0xFFF
+#define BAD_PTR     (uint64_t)0xDEADBEEF
+
+typedef struct PageDirectoryEntry {
+    // uint8_t present;
+    // uint8_t rw;
+    // uint8_t userSuper;
+    // uint8_t writeThrough;
+    // uint8_t cacheDisabled;
+    // uint8_t accessed;
+    // uint8_t ignore;
+    // uint8_t hugePages;
+    // uint8_t flags;
+    // uint8_t ignore1;
+    // uint8_t available;
+    uint64_t addr;
+} pde_t __attribute__((packed));
+
+typedef struct PageTable {
+    pde_t entries[512];
+} pt_t __attribute__((aligned(0x1000)));
+
 
 void get_physaddr(void *virt_addr);
 void unmap_page(unsigned long long virt_addr);
 
-// Uses malloc to allocate heap
-// Must be contiguous in virtual memory... space for malloc
-void * create_heap(); 
+void *free_page_space(uint64_t page_addr, size_t n);
 
-void * kalloc(size_t size);
-void free(void *ptr); // References allocation with size
 
-// Allows heap to be non-contiguous in physical memory
-// Will try to allocate contigious pages
-typedef struct HEAP {
-    void *startOfHeap;
-    heap_t *nextHeap;
-} heap_t;
-
-heap_t heapStart;
 
 /*
     malloc:
         -> sbrk() increases heap size
         -> allocate new page
         -> new free space
-
 
 */

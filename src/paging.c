@@ -1,4 +1,5 @@
 #include "headers/paging.h"
+#include "headers/memory.h"
 
 
 void get_physaddr(void *virt_addr) {                         
@@ -63,24 +64,25 @@ void * kalloc(size_t size) {
 }
 
 // When out of pages, allocate with kalloc_physical macro and add to page entry
-uint64_t allocate_page() { // Walk pages and return address of free page? Will allocate contiguous pages
-                        // If allocation is unsuccessful, then NULL is returned
+uint64_t allocate_pages(size_t n) { // Walk pages and return address of free page? Will allocate contiguous pages
 
-    uint64_t pageSize = 0x40000000; // Start with 1GiB HUGEPAGE - indexed at L3
-                                    // L2 indexes - 2MiB
-                                    // L1 indexes - 4KiB
+    uint64_t *page_dir_ptr = PAGE_DIR_VIRT; //Used for indexing P4 directly
+    int i=0;
+    // Loop through L4 looking for present L3
+    for (i=0; i<511 && ((page_dir_ptr[i] & PRESENT == 0)); page_dir_ptr++);
 
-    uint64_t virtualAddress = 0;       
-    // Loops through page directory
-    (uint64_t **)page_dir = (*((uint64_t *)PAGE_DIR_VIRT));
+    //i holds index into L4
+    //i must be placed: 0o177777_777_777_777_000_0000 fucking octal
+    //                  0xFFFF FFFF FFE0 0000 ; E = 1110
+    uint64_t *page_l3 = (PAGE_DIR_VIRT & ~0x7FFFF) & i<<12; // Unsetting index and oring l3_index 
 
-    (uint64_t **)page_table_entryl3;
-
-    for (int i=0; i<512*8 || !(page_dir & PRESENT); i++) {
-        page_table_entryl3 = page_dir[]
-    }
-
+    for (i=0; i<511 && ((page_l3[i] & PRESENT == 0)); page_l3++);
     
+    uint64_t *page_l2 = (PAGE_DIR_VIRT & ~0xFFFFFFF) & i<<(12+9); // Unsetting index and oring l3_index 
+
+    for (i=0; i<511 && ((page_l2[i] & PRESENT == 0)); page_l2++);
+
+    uint64_t *page_l1 = (PAGE_DIR_VIRT & ~0x7FFFFFFFFF) & i<<(12+9+9); // Unsetting index and oring l3_index 
 
     // 512 entries in each page table - just check present flag
 }
@@ -99,10 +101,37 @@ uint64_t allocate_page_rec(uint64_t **pt, uint64_t addr) {
     }
 }
 
-// Last entry of PML4 is mapped to itself allowing easy index into all page tables
-
 
 // Function creates virtual address from entries into page tables
 void *vaddr_from_entries(size_t pml4e, size_t pdpte, size_t pde, size_t pte, size_t offset) {
     return (void *)((pml4e << 39) | (pdpte << 30) | (pde << 21) | (pte << 12) | offset);
 }
+
+// Function to find n free spaces in page table given
+// -> Recusive mapping allows function to only need to increment L1 index
+// Mostly used to find new spaces in L1 anyway but can be used when new spaces in Lx are needed
+void *free_page_space(uint64_t page_addr, size_t n) {
+    // Setting increment
+    int inc_free = 0, i;
+
+    // Increments L1 map
+    for (i=0; i<512 || inc_free < n; i++, page_addr++) {
+        uint64_t value = *temp_addr; // All of these are mapped
+
+        // If value is good then increment
+        if ((value & PRESENT) == 0) {
+            // Page good for allocation
+            inc_free++;
+        } else {
+            temp_addr = page_addr;
+            inc_free = 0;
+        }
+    }
+    
+    if (i==511)
+        return BAD_PTR;
+
+    return page_addr;
+}
+
+
