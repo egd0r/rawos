@@ -1,4 +1,5 @@
 #pragma once
+#include "paging.h"
 #include "multiboot2.h"
 #include "types.h"
 
@@ -20,11 +21,17 @@ void * kalloc_physical(size_t size); //Sets n physical pages as allocated and re
 void kfree_physical(void *ptr);
 void memset(uint64_t ptr, uint8_t val, size_t size);
 
+// TODO -- requred my mymalloc
+#define PROT_WRITE    0x01
+#define PROT_READ     0x02
+#define MAP_SHARED    0x04
+#define MAP_ANONYMOUS 0x08
+
 // Allows heap to be non-contiguous in physical memory
 // Will try to allocate contigious pages
-typedef struct HEAP {
-    void *startOfHeap;
-    heap_t *nextHeap;
-} heap_t;
+// typedef struct HEAP {
+//     void *startOfHeap;
+//     struct HEAP *nextHeap;
+// } heap_t;
 
-heap_t heapStart; //Starts at end
+// heap_t heapStart; //Starts at end

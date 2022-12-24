@@ -90,7 +90,7 @@ uint64_t allocate_pages(size_t n) { // Walk pages and return address of free pag
 // Recursively allocates pages
 // Takes index of page table to search
 // Returns free space
-uint64_t allocate_page_rec(uint64_t **pt, uint64_t addr) {
+uint64_t allocate_page_rec(uint64_t *pt, uint64_t addr) {
 
     
     for (int i=0; i<512; i++) {
@@ -116,15 +116,11 @@ void *free_page_space(uint64_t page_addr, size_t n) {
 
     // Increments L1 map
     for (i=0; i<512 || inc_free < n; i++, page_addr++) {
-        uint64_t value = *temp_addr; // All of these are mapped
-
         // If value is good then increment
-        if ((value & PRESENT) == 0) {
+        // Can we place in for loop with increment with i++?
+        if ((*((uint64_t *)page_addr) & PRESENT) == 0) {
             // Page good for allocation
             inc_free++;
-        } else {
-            temp_addr = page_addr;
-            inc_free = 0;
         }
     }
     

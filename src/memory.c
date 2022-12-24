@@ -18,6 +18,18 @@ void *BITMAP_end;
 //Define macro here for conversions
 
 //
+void *mmap(int argv, ...) {
+    return NULL;
+}
+
+void * sbrk(int expand_size) {
+    return NULL;
+}
+
+void munmap(void *ptr, int size) {
+    return;
+}
+
 
 /*
     Takes MBR ADDR and returns memory map struct with memory sections
@@ -158,7 +170,7 @@ void kfree_physical(void *ptr) {
 
 void memset(uint64_t ptr, uint8_t val, size_t size) {
     for (int i=0; i<size; i++) {
-       *((uint8_t *)((uint64_t)start+i)) = val;
+       *((uint8_t *)((uint64_t)ptr+i)) = val;
     }
 }
 
@@ -193,7 +205,8 @@ void *allocate_page(size_t size) {
 
     // We can safely allocate these pages space
     for (int i=0; i<size; i++) {
-        space[i] = KALLOC_PHYS() |= (PRESENT | ALLOCATED); 
+        uint64_t phys_addr = (uint64_t)KALLOC_PHYS();
+        space[i] = phys_addr |= (PRESENT | RW); // Giving full perms for now
     }
 
     return space;
