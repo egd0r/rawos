@@ -14,7 +14,7 @@ void printf (const char *format, ...);
 int kmain(unsigned long mbr_addr) {
     // Initialise IDT
 
-    asm __volatile__("mov %rsp, [stk_top]");
+    asm __volatile__("mov %rsp, [stk_top]"); // Recreating stack in kmain
 
     idt_init();
 

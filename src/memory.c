@@ -101,11 +101,11 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
 // For allocating one page of physical memory, most likely used
 void set_bit(uint64_t addr, uint64_t bit) {
     int bitIndex = (addr % 0x40000)/PHYSICAL_PAGE_SIZE;
-    int pageIndex = (addr/0x40000)-1;
+    int pageIndex = (addr/0x40000);//-1;
 
     if (pageIndex > 0x20000) return; // Passed max
 
-    ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | bit<<bitIndex;
+    ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | (uint64_t)bit<<bitIndex;
 }
 
 void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
@@ -210,6 +210,81 @@ void *allocate_page(size_t size) {
     }
 
     return space;
+}
+
+// Takes page table index and level of current table, searches lvl levels
+void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
+    if (LVL == PT_LVL1) {
+        // If we're at end walk final table and return free space
+        uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
+
+        if (space == BAD_PTR) {
+            printf("uh oh!!!\n");
+            return NULL;
+        }
+
+        // We can safely allocate these pages space
+        for (int i=0; i<size; i++) {
+            space[i] = ((uint64_t)KALLOC_PHYS()) |= (PRESENT | RW); // Giving full perms for now
+        }
+
+        // Can't return pointer to page space but to memory that corresponds to it
+        return 0 |= (pt_ptr - space) << 12;
+    }
+    // First level will be 4
+    uint64_t *new_pt_ptr;
+    /*
+        Switch-case process:
+            - checks current level, loops through current level and
+            - calls next level on current using index 
+            - for each level, recursively call allocate function
+            - when a free space of size n is found in the page table:
+                - Physical addresses are allocated to it
+                - Index is returned, loop is broken if NULL is not returned
+    */
+    int shift;
+    void *free_space;
+    for (int i=0; i<512; i++) {
+        // Just continue if anything comes up as hugepage
+        // Can add allocations for HUGE_PAGE later
+        if (new_pt_ptr[i] & HUGE_PAGE == 1) continue;
+        switch (LVL) {
+            case PT_LVL2:
+                // Find ptr of level 1 with index
+                new_pt_ptr = (PAGE_DIR_VIRT & ~0x7FFFFFFFFF) & i<<(12+9+9); // Unsetting index and oring l3_index 
+                // If below returns NOT NULL then index i can be used to
+                // add to virtual address
+                free_space = page_alloc(new_pt_ptr, PT_LVL1, n);
+                shift = 12+9;
+
+            break;
+            case PT_LVL3:
+                // Find ptr of level 2 with index
+                new_pt_ptr = (PAGE_DIR_VIRT & ~0xFFFFFFF) & i<<(12+9); // Unsetting index and oring l3_index 
+                free_space = page_alloc(new_pt_ptr, PT_LVL2, n);
+                shift = 12+9+9;
+            break;
+            case PT_LVL4:
+                // Find ptr of level 3 with index
+                new_pt_ptr = (PAGE_DIR_VIRT & ~0x7FFFF) & i<<12; // Unsetting index and oring l3_index 
+                free_space = page_alloc(new_pt_ptr, PT_LVL3, n);
+                shift = 12+9+9+9;
+            break;
+            default:
+                continue;
+            break;
+        }
+        // If there's no space in the page table at this index
+        if (free_space == NULL) {
+            continue;
+        }
+
+        // Return virtual address of this page table + last page table
+        return free_space | i << shift;
+    }
+
+    // Return null if at end of iteration, no space in current table - if all are hugepages lol
+    return NULL;
 }
 
 // Increases size of heap, returns ptr to free 8k essentially

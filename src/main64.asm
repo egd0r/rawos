@@ -131,7 +131,7 @@ page_table_l2:
 page_table_l1:
     resb 4096
 stk_bott:
-    resb 4096 * 4
+    resb 4096 * 16 ;; 32 * 4k = 128k
 stk_top:
 
 section .rodata

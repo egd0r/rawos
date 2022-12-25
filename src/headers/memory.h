@@ -9,6 +9,12 @@
 #define PHYSICAL_PAGE_ALLOCATED 0xFFFFFFFFFFFFFFFF
 #define PHYSICAL_PAGE_FREE      0
 
+// For extracting indexes of page tables in virtual addresses
+#define PT_LVL4 0x0
+#define PT_LVL3 0x7FFFF 
+#define PT_LVL2 0xFFFFFFF
+#define PT_LVL1 0x7FFFFFFFFF
+
 // Physical address of start and end of kernel
 extern uint64_t KERNEL_START;
 extern uint64_t KERNEL_END;
