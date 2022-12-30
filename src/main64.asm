@@ -73,17 +73,17 @@ MapPages:
 
 
     ;; Mapping page directory to itself
-    mov rax, (page_table_l2-0xFFFFFFFF80000000)
-    or rax, 0b11
-    mov [page_table_l3 + (511*8)], rax ;; Last L3 mapped here to L2
+    ; mov rax, (page_table_l2-0xFFFFFFFF80000000)
+    ; or rax, 0b11
+    ; mov [page_table_l3 + (511*8)], rax ;; Last L3 mapped here to L2
 
-    mov rax, (page_table_l1-0xFFFFFFFF80000000)
-    or rax, 0b11
-    mov [page_table_l2 + (511*8)], rax ;; Last entry of l2 maps to l1
+    ; mov rax, (page_table_l1-0xFFFFFFFF80000000)
+    ; or rax, 0b11
+    ; mov [page_table_l2 + (511*8)], rax ;; Last entry of l2 maps to l1
 
     mov rax, (page_table_l4-0xFFFFFFFF80000000)
     or rax, 0b11
-    mov [page_table_l1 + (511*8)], rax ;; Last entry of l1 holds physical address of l4
+    mov [page_table_l4 + (510*8)], rax ;; Last entry of l1 holds physical address of l4
 
 ; KERNEL_OFFSET =           0xFFFFFFFF80000000;
     ;; Disable paging

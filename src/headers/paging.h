@@ -10,7 +10,7 @@
 
 #define PRESENT     0x01
 #define RW          0x02
-#define HUGE_PAGE   0x08
+#define HUGE_PAGE   0x80
 #define FLAGS       0xFFF
 #define BAD_PTR     (uint64_t)0xDEADBEEF
 
@@ -37,7 +37,7 @@ typedef struct PageTable {
 void get_physaddr(void *virt_addr);
 void unmap_page(unsigned long long virt_addr);
 
-void *free_page_space(uint64_t page_addr, size_t n);
+void *free_page_space(uint64_t page_addr, uint16_t n);
 
 
 

@@ -11,8 +11,8 @@
 
 // For extracting indexes of page tables in virtual addresses
 #define PT_LVL4 0x0
-#define PT_LVL3 0x7FFFF 
-#define PT_LVL2 0xFFFFFFF
+#define PT_LVL3 0x1FFFFF 
+#define PT_LVL2 0x3FFFFFFF
 #define PT_LVL1 0x7FFFFFFFFF
 
 // Physical address of start and end of kernel
@@ -26,6 +26,9 @@ struct multiboot_tag_mmap *init_memory_map(void *mbr_addr);
 void * kalloc_physical(size_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
 void kfree_physical(void *ptr);
 void memset(uint64_t ptr, uint8_t val, size_t size);
+// LVLs defined above
+#define p_alloc(pt_ptr, n) page_alloc(pt_ptr, PT_LVL4, n)
+// void *page_alloc(uint64_t *pt_ptr, int LVL, uint16_t n);
 
 // TODO -- requred my mymalloc
 #define PROT_WRITE    0x01

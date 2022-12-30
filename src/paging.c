@@ -110,7 +110,7 @@ void *vaddr_from_entries(size_t pml4e, size_t pdpte, size_t pde, size_t pte, siz
 // Function to find n free spaces in page table given
 // -> Recusive mapping allows function to only need to increment L1 index
 // Mostly used to find new spaces in L1 anyway but can be used when new spaces in Lx are needed
-void *free_page_space(uint64_t page_addr, size_t n) {
+void *free_page_space(uint64_t page_addr, uint16_t n) {
     // Setting increment
     int inc_free = 0, i;
 
@@ -121,6 +121,8 @@ void *free_page_space(uint64_t page_addr, size_t n) {
         if ((*((uint64_t *)page_addr) & PRESENT) == 0) {
             // Page good for allocation
             inc_free++;
+        } else {
+            inc_free = 0;
         }
     }
     

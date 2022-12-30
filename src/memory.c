@@ -213,7 +213,7 @@ void *allocate_page(size_t size) {
 }
 
 // Takes page table index and level of current table, searches lvl levels
-void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
+void * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
     if (LVL == PT_LVL1) {
         // If we're at end walk final table and return free space
         uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
@@ -223,16 +223,16 @@ void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
             return NULL;
         }
 
-        // We can safely allocate these pages space
-        for (int i=0; i<size; i++) {
-            space[i] = ((uint64_t)KALLOC_PHYS()) |= (PRESENT | RW); // Giving full perms for now
+        // We can safely allocate these n pages space
+        for (int i=0; i<n; i++) {
+            space[i] = ((uint64_t)KALLOC_PHYS()) | (PRESENT | RW); // Giving full perms for now
         }
 
         // Can't return pointer to page space but to memory that corresponds to it
-        return 0 |= (pt_ptr - space) << 12;
+        return 0 | (pt_ptr - space) << 12;
     }
     // First level will be 4
-    uint64_t *new_pt_ptr;
+    uint64_t *new_pt_ptr = pt_ptr;
     /*
         Switch-case process:
             - checks current level, loops through current level and
@@ -247,11 +247,13 @@ void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
     for (int i=0; i<512; i++) {
         // Just continue if anything comes up as hugepage
         // Can add allocations for HUGE_PAGE later
-        if (new_pt_ptr[i] & HUGE_PAGE == 1) continue;
+        if ((new_pt_ptr[i] & HUGE_PAGE) == HUGE_PAGE) {
+            continue;
+        } 
         switch (LVL) {
             case PT_LVL2:
                 // Find ptr of level 1 with index
-                new_pt_ptr = (PAGE_DIR_VIRT & ~0x7FFFFFFFFF) & i<<(12+9+9); // Unsetting index and oring l3_index 
+                new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL1) | i<<(12+9+9); // Unsetting index and oring l3_index 
                 // If below returns NOT NULL then index i can be used to
                 // add to virtual address
                 free_space = page_alloc(new_pt_ptr, PT_LVL1, n);
@@ -260,13 +262,13 @@ void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
             break;
             case PT_LVL3:
                 // Find ptr of level 2 with index
-                new_pt_ptr = (PAGE_DIR_VIRT & ~0xFFFFFFF) & i<<(12+9); // Unsetting index and oring l3_index 
+                new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL2) | i<<(12+9); // Unsetting index and oring l3_index 
                 free_space = page_alloc(new_pt_ptr, PT_LVL2, n);
                 shift = 12+9+9;
             break;
             case PT_LVL4:
                 // Find ptr of level 3 with index
-                new_pt_ptr = (PAGE_DIR_VIRT & ~0x7FFFF) & i<<12; // Unsetting index and oring l3_index 
+                new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL3) | i<<12; // Unsetting index and oring l3_index 
                 free_space = page_alloc(new_pt_ptr, PT_LVL3, n);
                 shift = 12+9+9+9;
             break;
@@ -280,7 +282,8 @@ void * page_alloc(uint64_t *pt_ptr, int LVL, size_t n) {
         }
 
         // Return virtual address of this page table + last page table
-        return free_space | i << shift;
+        // Casting pointer to number so it can be operated on
+        return (uint64_t)free_space | (i << shift);
     }
 
     // Return null if at end of iteration, no space in current table - if all are hugepages lol
