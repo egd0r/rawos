@@ -1,6 +1,6 @@
 #pragma once
 #include "types.h"
-#define PAGE_DIR_VIRT 0xFFFFFFFFFFFFF000 // Last entry in L1 maps to L4, indexing this address gives PDEs
+#define PAGE_DIR_VIRT 0xFFFFFF7FBFDFE000 // 2nd last entry maps to itself
                     //0xFFFFFFFFC0000000
 /*                                L3        L2        L1          
     Page Dir Virt = 0xFFFF  1111 1111 1111 1111 1111 1111 11    

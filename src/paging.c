@@ -113,13 +113,15 @@ void *vaddr_from_entries(size_t pml4e, size_t pdpte, size_t pde, size_t pte, siz
 void *free_page_space(uint64_t page_addr, uint16_t n) {
     // Setting increment
     int inc_free = 0, i;
-
+    uint64_t temp_addr;
     // Increments L1 map
-    for (i=0; i<512 || inc_free < n; i++, page_addr++) {
+    for (i=0; i<512 && inc_free < n; i++, page_addr++) {
         // If value is good then increment
         // Can we place in for loop with increment with i++?
         if ((*((uint64_t *)page_addr) & PRESENT) == 0) {
             // Page good for allocation
+
+            if (inc_free == 0) temp_addr = page_addr;
             inc_free++;
         } else {
             inc_free = 0;
@@ -129,7 +131,7 @@ void *free_page_space(uint64_t page_addr, uint16_t n) {
     if (i==511)
         return BAD_PTR;
 
-    return page_addr;
+    return temp_addr;
 }
 
 

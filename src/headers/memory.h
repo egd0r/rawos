@@ -10,6 +10,8 @@
 #define PHYSICAL_PAGE_FREE      0
 
 // For extracting indexes of page tables in virtual addresses
+//     Mapping indexes
+// Generalise function 
 #define PT_LVL4 0x0
 #define PT_LVL3 0x1FFFFF 
 #define PT_LVL2 0x3FFFFFFF

@@ -35,7 +35,7 @@ int kmain(unsigned long mbr_addr) {
 
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
-    // uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
+    uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
     // printf("Address allocated: %x\n", virt_addr);
 
 
