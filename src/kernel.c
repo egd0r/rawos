@@ -21,6 +21,7 @@ int kmain(unsigned long mbr_addr) {
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
     cls();
+    memset(BITMAP_VIRTUAL, ~0, 0x10000); //Sets bitmap to entirely allocated
     struct multiboot_tag_mmap *ret = init_memory_map(mbr_addr);
 
     // Allocate at 0
@@ -35,8 +36,12 @@ int kmain(unsigned long mbr_addr) {
 
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
-    uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
+    // uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
+    uint64_t *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1) | 0xffff000000000000; // Trying to allocate first free page
+
     // printf("Address allocated: %x\n", virt_addr);
+
+    *virt_addr = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
 
 
 

@@ -70,15 +70,17 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                         mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
                             + mmapTag->entry_size), i++)
                 {
-                    // printf("Memory area starting at %x with "
-                            // "length of %x and type %x\n",
-                            // (mmap->addr),
-                            // (mmap->len),
-                            // mmap->type);
+                    printf("Memory area starting at %x with "
+                            "length of %x and type %x\n",
+                            (mmap->addr),
+                            (mmap->len),
+                            mmap->type);
 
 
                     // With each mmap, size / 4096 is set as either 1s or 0s in bitmap
-                    map_physical_pages(mmap->type == 1 ? 0 : 1, mmap->len, mmap->addr);
+                    map_physical_pages( // Maybe useless check
+                        (mmap->type && mmap->addr >= &KERNEL_END) == 1 ? 0 : 1
+                        , mmap->len, mmap->addr);
                 }
 
                 break;
@@ -87,9 +89,10 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                 break;
         }
 
-        //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
-        map_physical_pages(1, &KERNEL_END-&KERNEL_START, &KERNEL_START);
     }
+    //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
+    // map_physical_pages(1, &KERNEL_END-&KERNEL_START, &KERNEL_START);
+    printf("%x %x\n", &KERNEL_START, &KERNEL_END);
 
 }
 
@@ -105,11 +108,15 @@ void set_bit(uint64_t addr, uint64_t bit) {
 
     if (pageIndex > 0x20000) return; // Passed max
 
-    ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | (uint64_t)bit<<bitIndex;
+
+    if (bit == 1)
+        ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | (uint64_t)1<<bitIndex;
+    else
+        ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] ^ (uint64_t)1<<bitIndex;
 }
 
 void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
-    if (!allocated) return; // Why make 0s 0s? Only run for allocations
+    if (allocated) return; // Why make 1s 1s? Only run for de-allocations
     uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
 
 
@@ -126,7 +133,7 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
     BITMAP_end = base+i;
 
     
-    // printf("%d actual physical pages mapped as %d\n", i, allocated);
+    // printf("%x %d actual physical pages mapped as %d\n", base, i, allocated);
 }
 
 // For contiguous physical allocations, DMA etc
@@ -168,7 +175,7 @@ void kfree_physical(void *ptr) {
     set_bit(ptr, 0);
 }
 
-void memset(uint64_t ptr, uint8_t val, size_t size) {
+void memset(uint64_t ptr, uint8_t val, uint64_t size) {
     for (int i=0; i<size; i++) {
        *((uint8_t *)((uint64_t)ptr+i)) = val;
     }
@@ -214,7 +221,7 @@ void *allocate_page(size_t size) {
 
 // Takes page table index and level of current table, searches lvl levels
 // Takes NUMBER OF PAGES TO ALLOCATE
-void * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
+uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
     if (LVL == PT_LVL1) {
         // If we're at end walk final table and return free space
         uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
@@ -291,7 +298,7 @@ void * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
 
         // Return virtual address of this page table + last page table
         // Casting pointer to number so it can be operated on
-        return (uint64_t)free_space | (i << shift);
+        return ((uint64_t)free_space | (i << shift));
     }
 
     // Return null if at end of iteration, no space in current table - if all are hugepages lol
