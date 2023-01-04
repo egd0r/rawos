@@ -26,6 +26,9 @@ int kmain(unsigned long mbr_addr) {
 
     // Allocate at 0
     uint64_t ptr = kalloc_physical(1);
+    ptr = kalloc_physical(1);
+    ptr = kalloc_physical(1);
+    ptr = kalloc_physical(1);
     // Free at 0
     kfree_physical((void *)ptr);
 
@@ -37,11 +40,15 @@ int kmain(unsigned long mbr_addr) {
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
     // uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
-    uint64_t *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1) | 0xffff000000000000; // Trying to allocate first free page
+    uint64_t *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1); // Trying to allocate first free page
+    uint64_t *virt_addr_2 = page_alloc(KERNEL_LVL2_MAP, PT_LVL2, 1) | KERNEL_OFFSET; // Trying to allocate first free page
 
     // printf("Address allocated: %x\n", virt_addr);
 
-    *virt_addr = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
+    *(virt_addr) = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
+    printf("addr: %x\n", virt_addr);
+    *virt_addr_2 = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
+    printf("higher: %d\n", *((uint16_t *)0xFFFFFFFF81200000));
 
 
 

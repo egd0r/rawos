@@ -78,8 +78,8 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
 
 
                     // With each mmap, size / 4096 is set as either 1s or 0s in bitmap
-                    map_physical_pages( // Maybe useless check
-                        (mmap->type && mmap->addr >= &KERNEL_END) == 1 ? 0 : 1
+                    map_physical_pages(
+                        (mmap->type == 1) ? 0 : 1
                         , mmap->len, mmap->addr);
                 }
 
@@ -91,7 +91,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
 
     }
     //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
-    // map_physical_pages(1, &KERNEL_END-&KERNEL_START, &KERNEL_START);
+    // map_physical_pages(1, 0x200000*9, 0); // Allocating what's already been mapped in HUGEPAGES - so overkill lol
     printf("%x %x\n", &KERNEL_START, &KERNEL_END);
 
 }
@@ -117,6 +117,10 @@ void set_bit(uint64_t addr, uint64_t bit) {
 
 void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
     if (allocated) return; // Why make 1s 1s? Only run for de-allocations
+    
+    while (base < KERNEL_MAX_PHYS) {
+        base += 0x1000; //Add 4096 to base until outside kernel space allocated already
+    }
     uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
 
 
@@ -147,7 +151,7 @@ void * kalloc_physical(size_t size) {
     for (int i=0; i<0x20000; i++) {
         uint64_t pages = ((uint64_t *)BITMAP_VIRTUAL)[i];
         for (int ii=0; ii<64; ii++) {
-            int page = pages >> ii | pages & ~0x1; // Extract last bit
+            uint8_t page = (pages >> ii) & 0x1; // Extract last bit
             if (page == PHYSICAL_PAGE_FREE) {
                 if (counter == 0) {
                     ret = i*0x40000 + ii*4096; 
@@ -155,7 +159,7 @@ void * kalloc_physical(size_t size) {
                 counter++;
                 if (counter == size) {
                     //Map size at start
-                    for (int i=0; i<size/PHYSICAL_PAGE_SIZE; i++)
+                    for (int i=0; i<((size%PHYSICAL_PAGE_SIZE == 0) ? size/4096 : 1+(size/4096)); i++)
                         set_bit(ret, 1);
                     return ret;
                 }
@@ -237,7 +241,7 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
         }
 
         // Can't return pointer to page space but to memory that corresponds to it
-        return 0 | (pt_ptr - space) << 12;
+        return 0 | (space - pt_ptr) << 12;
     }
     // First level will be 4
     uint64_t *new_pt_ptr;
@@ -250,9 +254,9 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
                 - Physical addresses are allocated to it
                 - Index is returned, loop is broken if NULL is not returned
     */
-    int shift;
+    int shift, new=0;
     void *free_space;
-    for (int i=0; i<512; i++) {
+    for (int i=0; i<511; i++) {
         // Just continue if anything comes up as hugepage
         // Can add allocations for HUGE_PAGE later
         if ((pt_ptr[i] & HUGE_PAGE) == HUGE_PAGE) {
@@ -261,6 +265,7 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
         // If place is null, allocate a new page to it since we're not at lowest level yet
         if ((pt_ptr[i] == 0)) {
             pt_ptr[i] = ((uint64_t)KALLOC_PHYS()) | PRESENT | RW; // Allocate physical page to space
+            new = 1;
         }
         switch (LVL) {
             case PT_LVL2:
@@ -269,6 +274,7 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL1) | i<<(12+9+9); // Unsetting index and oring l3_index 
                 // If below returns NOT NULL then index i can be used to
                 // add to virtual address
+                if (new == 1) memset(new_pt_ptr, 0, 512);
                 free_space = page_alloc(new_pt_ptr, PT_LVL1, n);
                 shift = 12+9;
             break;
@@ -276,13 +282,15 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
                 // Find ptr of level 2 with index
                 new_pt_ptr = ((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL2) | ((uint64_t)pt_ptr & ~PT_LVL2);
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL2) | i<<(12+9); // Unsetting index and oring l3_index 
+                if (new == 1) memset(new_pt_ptr, 0, 512);
                 free_space = page_alloc(new_pt_ptr, PT_LVL2, n);
                 shift = 12+9+9;
             break;
             case PT_LVL4:
+                if (i==510) continue; // Don't want to go here
                 // Find ptr of level 3 with index
                 new_pt_ptr = ((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL3) | ((uint64_t)pt_ptr & ~PT_LVL3);
-
+                if (new == 1) memset(new_pt_ptr, 0, 512);
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL3) | i<<12; // Unsetting index and oring l3_index 
                 free_space = page_alloc(new_pt_ptr, PT_LVL3, n);
                 shift = 12+9+9+9;
