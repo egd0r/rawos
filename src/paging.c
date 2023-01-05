@@ -115,7 +115,7 @@ void *free_page_space(uint64_t page_addr, uint16_t n) {
     int inc_free = 0, i;
     uint64_t temp_addr;
     // Increments L1 map
-    for (i=0; i<512 && inc_free < n; i++, page_addr++) {
+    for (i=0; i<512 && inc_free < n; i++, page_addr+=sizeof(page_addr)) {
         // If value is good then increment
         // Can we place in for loop with increment with i++?
         if ((*((uint64_t *)page_addr) & PRESENT) == 0) {

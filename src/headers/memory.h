@@ -4,9 +4,9 @@
 #include "types.h"
 
 #define KERNEL_MAX_PHYS 0x1200000
-#define KERNEL_OFFSET  0xFFFFFFFF80000000
-#define BITMAP_VIRTUAL 0xFFFFFFFF81100000 // 2MB bitmap
-#define BITMAP_MAX     0xFFFFFFFF81200000 // Next index in page table
+#define KERNEL_OFFSET  0xFFFFFFFF80000000 // 511 + 510 + L2 + L1 + Offset
+#define BITMAP_VIRTUAL 0xFFFFFFFF81000000 // 2MB bitmap - 1 in index 8
+#define BITMAP_MAX     0xFFFFFFFF81200000 // Next index in page table - 8 + 1
 #define PHYSICAL_PAGE_SIZE 4096
 #define PHYSICAL_PAGE_ALLOCATED 1
 #define PHYSICAL_PAGE_FREE      0
