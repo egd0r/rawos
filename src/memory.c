@@ -22,10 +22,6 @@ void *mmap(int argv, ...) {
     return NULL;
 }
 
-void * sbrk(int expand_size) {
-    return NULL;
-}
-
 void munmap(void *ptr, int size) {
     return;
 }
@@ -225,7 +221,10 @@ void *allocate_page(size_t size) {
 
 // Takes page table index and level of current table, searches lvl levels
 // Takes NUMBER OF PAGES TO ALLOCATE
-uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
+uint64_t previous_allocation = NULL;
+uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
+    if (n == 0) return previous_allocation;
+
     if (LVL == PT_LVL1) {
         // If we're at end walk final table and return free space
         uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
@@ -306,7 +305,9 @@ uint64_t * page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
 
         // Return virtual address of this page table + last page table
         // Casting pointer to number so it can be operated on
-        return ((uint64_t)free_space | (i << shift));
+        uint64_t ret = ((uint64_t)free_space | (i << shift));
+        previous_allocation = ret;
+        return ret;
     }
 
     // Return null if at end of iteration, no space in current table - if all are hugepages lol
@@ -504,7 +505,7 @@ chunk_n * combine(chunk_n *start, chunk_n *end) {
     //Increasing size of remaining chunk to include removed chunk
     start->size += end->size + sizeof(chunk_n);
 
-    printf("Coalesced %p with %p, inserting into correct bin!\n", start, end);
+    printf("Coalesced %x with %x, inserting into correct bin!\n", start, end);
     //Replacing remaining chunk into bin
     place_in_bin(start);
     return start;
@@ -520,7 +521,7 @@ void *create_new_mmap_space(int bytes) {
     void *newMemPtr = mmap(NULL, bytes+sizeof(chunk_n), PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     
     *((chunk_n *)newMemPtr) = newAllocated;
-    printf("\tMemory provided by mmap at: %p\n", newMemPtr);
+    printf("\tMemory provided by mmap at: %x\n", newMemPtr);
 
 
     return newMemPtr;
@@ -531,7 +532,8 @@ void *create_new_mmap_space(int bytes) {
 void *create_new_heap_space() { 
     //Condition checks whether new heap is adjecent in memory to previous heap created
     //Allows coalescing of heap spaces
-    if (next_chunk(tail_of_last_heapchunk) == sbrk(0)) {
+    void *prev = sbrk(0);
+    if (next_chunk(tail_of_last_heapchunk) == prev && prev != BAD_PTR) {
         printf("\tNew heap chunk is adjecent to the last one\n"); 
         //Creating new tail to place at end of new heap
         chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL, .prev=tail_of_last_heapchunk->prev };
@@ -564,8 +566,16 @@ void *create_new_heap_space() {
         return ret;
     } else { //Heap spaces are not adjecent
         //Creating heap metadata
-        chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
-        chunk_n head_heap = { .size=(0 | (ALLOCATED_MASK)), .prev=tail_of_last_heapchunk };
+        // chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
+        chunk_n tail_heap;
+        tail_heap.next = NULL;
+        tail_heap.size = 0 | ALLOCATED_MASK;
+
+        // chunk_n head_heap = { .size=(0 | (ALLOCATED_MASK)), .prev=tail_of_last_heapchunk };
+        chunk_n head_heap;
+        head_heap.size = 0 | ALLOCATED_MASK;
+        head_heap.prev = tail_of_last_heapchunk;
+        head_heap.prev_size = tail_of_last_heapchunk == NULL ? NULL : tail_of_last_heapchunk->size;
         //Creating new chunk metadata       note: size defined with verbosity for clarity
         chunk_n newFreeChunk = { .prev_size = head_heap.size, .size = DEFAULT_BYTES-(sizeof(chunk_n)+sizeof(head_heap)+sizeof(tail_heap)), .next = NULL, .prev = NULL };
 
@@ -594,9 +604,9 @@ void *create_new_heap_space() {
 
 //Allocates a space of size "bytes" and returns a pointer to the start of the chunk
 //Has the ability to call mmap for allocations larger than those that are able to fit in the free chunks available.
-void *new_malloc(size_t bytes) {
+void *new_malloc(int bytes) {
 
-    printf("\n\n--- Running new_malloc function, attempting to create %ld bytes ---\n", bytes);
+    printf("\n\n--- Running new_malloc function, attempting to create %d bytes ---\n", bytes);
     
     //Initialising pointer to free space
     chunk_n *foundFree;
@@ -687,7 +697,7 @@ void new_free(void *ptr) {
             //If present, remove from linked list holding mmapped space
             if (remove_from_list(&mmap_space_head, foundChunk)) {
                 munmap(foundChunk, foundChunk->size+sizeof(chunk_n));
-                printf("\nSUCCESSFULLY FREED MMAPPED SPACE: %p\n", foundChunk);
+                printf("\nSUCCESSFULLY FREED MMAPPED SPACE: %x\n", foundChunk);
                 return;
             }
         }
@@ -701,14 +711,13 @@ void new_free(void *ptr) {
     chunk_n *nextChunk = next_chunk(foundChunk); 
     chunk_n *prevChunk = prev_chunk(foundChunk);
 
-    printf("Attempting to combine: %p with %p and %p\n", foundChunk, prevChunk, nextChunk);
+    printf("Attempting to combine: %x with %x and %x\n", foundChunk+4, prevChunk+4, nextChunk+4);
 
     //Coalescing and updating prev size
     update_prev_size(combine(foundChunk, nextChunk));
     update_prev_size(combine(prevChunk, foundChunk));
 
-    
-    printf("\nSUCCESSFULLY FREED %p at %p. Setting as unallocated.\n", ptr, foundChunk);
+    printf("\nSUCCESSFULLY FREED %x at %x. Setting as unallocated.\n", ptr+4, foundChunk+4);
 }
 
 //Returns total free size in all bins
@@ -735,7 +744,7 @@ void print_list() {
         }
         for (; temp; temp=temp->next) {
             //Outputting formatted information about current free chunk
-            if (temp->size > 0) printf("  %p - %-6d|", temp, temp->size);
+            if (temp->size > 0) printf("  %x - %d|", temp, temp->size);
             //printf("In bin %d\t", i);
         }
         if (bin_list[i].bin_size != 0)

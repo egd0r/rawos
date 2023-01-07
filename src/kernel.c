@@ -40,23 +40,24 @@ int kmain(unsigned long mbr_addr) {
     // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
 
     // uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
-    // int *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1); // Trying to allocate first free page
-    uint64_t *virt_addr = page_alloc(KERNEL_LVL2_MAP, PT_LVL2, 1) | KERNEL_OFFSET; // Trying to allocate first free page
+    int *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1); // Trying to allocate first free page
+    // uint64_t *virt_addr = page_alloc(KERNEL_LVL2_MAP, PT_LVL2, 1) | KERNEL_OFFSET; // Trying to allocate first free page
     *virt_addr = 100;
     
-    uint64_t *virt_addr_new = page_alloc(KERNEL_LVL2_MAP, PT_LVL2, 1) | KERNEL_OFFSET; // Trying to allocate first free page
+    uint64_t *virt_addr_new = sbrk(1); // Trying to allocate first free page
     *virt_addr_new = 1024;
 
-    // *(virt_addr) = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
-    printf("virt_addr: %d\n", *virt_addr);
-    printf("virt_addr_new: %d\n", *virt_addr_new);
-    // *virt_addr_2 = 0xEEEEEEEEEEEEEEEE; // Testing before integration with malloc
-    // printf("higher: %d\n", *((uint16_t *)virt_addr_2));
+    uint64_t *sbrk_eg = sbrk(0);
 
+    int *arr = new_malloc(sizeof(int)*5);
 
+    for (int i=0; i<5; i++) {
+        arr[i] = i;
+    }
 
-    // printf("\n");
-  
+    new_free(arr);
+
+    print_list();
 
     printf("OK!\n");
 
