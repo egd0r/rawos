@@ -6,10 +6,28 @@ static idtr_t idtr;
 __attribute__((aligned(0x10))) 
 static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
 
+void print_reg(char *name, uint64_t reg) {
+	uint32_t hi = (reg & 0xFFFFFFFF00000000) >> 32;
+	uint32_t lo = reg;
+
+	printf("    %s    0x%8x:%8x\n", name, hi, lo);
+}
+
+void print_reg_state(int_frame frame) {
+	printf("DUMP:\n");
+	print_reg("RDI", frame.rdi);
+	print_reg("RSI", frame.rsi);
+	print_reg("RDX", frame.rdx);
+	print_reg("RCX", frame.rcx);
+	print_reg("RBX", frame.rbx);
+	print_reg("RAX", frame.rax);
+}
+
 //Interrupt handlers
 __attribute__((interrupt));
 void exception_handler(int_frame frame) {
 	printf("Recoverable interrupt 0x%2x\n", frame.vector);
+	print_reg_state(frame);
 
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
 	return;
@@ -17,9 +35,11 @@ void exception_handler(int_frame frame) {
 
 
 __attribute__((interrupt));
-void panic(uint8_t interrupt_index) {
+void panic(int_frame frame) {
 	__asm__ volatile ("cli");
-	printf("Non recoverable interrupt %d, PANIC PANIC PANIC\n", interrupt_index);
+	printf("Non recoverable interrupt 0x%2x, PANIC PANIC PANIC\n", frame.vector);
+	print_reg_state(frame);
+
 	__asm__ volatile ("hlt");
 }
 

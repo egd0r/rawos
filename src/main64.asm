@@ -229,15 +229,16 @@ isr_no_err_stub 29
 isr_err_stub    30
 isr_no_err_stub 31
 
-isr_no_err_stub 112
-isr_no_err_stub 113
-isr_no_err_stub 114
-isr_no_err_stub 115
-isr_no_err_stub 116
-isr_no_err_stub 117
-isr_no_err_stub 118
-isr_no_err_stub 119
-isr_no_err_stub 120
+;; Avoiding fault for reserved ints
+isr_err_stub 112
+isr_err_stub 113
+isr_err_stub 114
+isr_err_stub 115
+isr_err_stub 116
+isr_err_stub 117
+isr_err_stub 118
+isr_err_stub 119
+isr_err_stub 120
 
 
 global isr_stub_table

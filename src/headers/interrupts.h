@@ -54,7 +54,7 @@ typedef struct {
 
 //Need to make available for assembly routines
 void exception_handler(int_frame frame);
-void panic(uint8_t);
+void panic(int_frame frame);
 // void pagefault_handler();
 // void doublefault_handler();
 // void gpfault_handler();

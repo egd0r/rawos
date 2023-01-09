@@ -86,6 +86,7 @@ int kmain(unsigned long mbr_addr) {
 void
 cls (void)
 {
+  xpos = 0; ypos = 0;
   int i;
 
   video = (unsigned char *) VIDEO;
