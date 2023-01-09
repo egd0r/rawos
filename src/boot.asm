@@ -180,6 +180,7 @@ stk_top_boot:
 ; GDT
 global mbootstruct
 section .boot_rodata
+global boot_gdt64
 bits 64
 boot_gdt64:
 	dq 0 ; zero entry 

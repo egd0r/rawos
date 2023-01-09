@@ -42,8 +42,18 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 
+typedef struct {
+	uint64_t vector;
+	uint64_t rdi;
+	uint64_t rsi;
+	uint64_t rdx;
+	uint64_t rcx;
+	uint64_t rbx;
+	uint64_t rax;
+} int_frame;
+
 //Need to make available for assembly routines
-void exception_handler(uint8_t interrupt_index);
+void exception_handler(int_frame frame);
 void panic(uint8_t);
 // void pagefault_handler();
 // void doublefault_handler();

@@ -13,7 +13,6 @@ void printf (const char *format, ...);
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
 int kmain(unsigned long mbr_addr) {
     // Initialise IDT
-
     asm __volatile__("mov %rsp, [stk_top]"); // Recreating stack in kmain
 
     idt_init();
@@ -57,13 +56,10 @@ int kmain(unsigned long mbr_addr) {
 
     new_free(arr);
 
-    print_list();
-
     printf("OK!\n");
 
-    //Trying to deref page directory
-    uint64_t *pd = PAGE_DIR_VIRT;
-    get_physaddr(PAGE_DIR_VIRT);
+    //Trying to deref page directory - PF int 0x0E
+    // *((uint64_t *)0x222222222222) = 453;
 
 
     *((int *)0xb8900) = mbr_addr;   // print address

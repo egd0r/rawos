@@ -8,9 +8,11 @@ static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for perf
 
 //Interrupt handlers
 __attribute__((interrupt));
-void exception_handler(uint8_t interrupt_index) {
-	printf("Recoverable interrupt %d\n", interrupt_index);
+void exception_handler(int_frame frame) {
+	printf("Recoverable interrupt 0x%2x\n", frame.vector);
+
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
+	return;
 }
 
 
@@ -83,12 +85,12 @@ void idt_init() {
 	idtr.base = (uint64_t)&idt[0];
 	idtr.limit = (uint16_t)sizeof(idt_entry_t) * 255 - 1;
 
-	for (int i=0; i<32; i++) {
+	for (int i=0; i<33; i++) {
 		idt_set_descriptor(i, isr_stub_table[i], IDT_TA_InterruptGate);
 	}
 
     // idt_set_descriptor(0x08, &doublefault_handler, IDT_TA_InterruptGate);
-	idt_set_descriptor(0x0D, &gpfault_handler, IDT_TA_InterruptGate);
+	// idt_set_descriptor(0x0D, &gpfault_handler, IDT_TA_InterruptGate);
 	
 	remapPIC();
 

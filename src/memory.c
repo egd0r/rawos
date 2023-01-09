@@ -66,11 +66,11 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                         mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
                             + mmapTag->entry_size), i++)
                 {
-                    printf("Memory area starting at %x with "
-                            "length of %x and type %x\n",
-                            (mmap->addr),
-                            (mmap->len),
-                            mmap->type);
+                    // printf("Memory area starting at %x with "
+                    //         "length of %x and type %x\n",
+                    //         (mmap->addr),
+                    //         (mmap->len),
+                    //         mmap->type);
 
 
                     // With each mmap, size / 4096 is set as either 1s or 0s in bitmap

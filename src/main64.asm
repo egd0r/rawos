@@ -151,20 +151,48 @@ section .text
 extern exception_handler
 extern panic
 
+;; Pushing register state to stack to avoid bad things!
+%macro pushreg 0
+push rax
+push rbx
+push rcx
+push rdx
+push rsi
+push rdi
+%endmacro
+
+;; Popping register state from stack
+%macro popreg 0
+pop rdi
+pop rsi
+pop rdx
+pop rcx
+pop rbx
+pop rax
+%endmacro
+
 ;; Defining macros for error stubs
 %macro isr_err_stub 1
 isr_stub_%+%1:
     ;; Save registers
     ;; Move interrupt number into exception handler
-    mov qword rdi, %1
+    pushreg
+    push qword %1
+    ; push qword 0xEE
+    lea rdi, [rsp + 0x08] ;; Load address of stack + 7 for start of struct
     call exception_handler
+    pop rdi ;; Popping vector into rdi will get overwritten
+    popreg
     iretq
 %endmacro
 ; if writing for 64-bit, use iretq instead
 %macro isr_no_err_stub 1
 isr_stub_%+%1:
-    mov qword rdi, %1
+    pushreg
+    push %1
     call panic
+    pop rdi ;; Popping vector into rdi will get overwritten
+    popreg
     iretq
 %endmacro
 
@@ -200,6 +228,17 @@ isr_no_err_stub 28
 isr_no_err_stub 29
 isr_err_stub    30
 isr_no_err_stub 31
+
+isr_no_err_stub 112
+isr_no_err_stub 113
+isr_no_err_stub 114
+isr_no_err_stub 115
+isr_no_err_stub 116
+isr_no_err_stub 117
+isr_no_err_stub 118
+isr_no_err_stub 119
+isr_no_err_stub 120
+
 
 global isr_stub_table
 
