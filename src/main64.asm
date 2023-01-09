@@ -185,68 +185,19 @@ isr_stub_%+%1:
     popreg
     iretq
 %endmacro
-; if writing for 64-bit, use iretq instead
-%macro isr_no_err_stub 1
-isr_stub_%+%1:
-    pushreg
-    push %1
-    call panic
-    pop rdi ;; Popping vector into rdi will get overwritten
-    popreg
-    iretq
-%endmacro
 
-isr_no_err_stub 0
-isr_no_err_stub 1
-isr_no_err_stub 2
-isr_no_err_stub 3
-isr_no_err_stub 4
-isr_no_err_stub 5
-isr_no_err_stub 6
-isr_no_err_stub 7
-isr_err_stub    8
-isr_no_err_stub 9
-isr_err_stub    10
-isr_err_stub    11
-isr_err_stub    12
-isr_err_stub    13
-isr_err_stub    14
-isr_no_err_stub 15
-isr_no_err_stub 16
-isr_err_stub    17
-isr_no_err_stub 18
-isr_no_err_stub 19
-isr_no_err_stub 20
-isr_no_err_stub 21
-isr_no_err_stub 22
-isr_no_err_stub 23
-isr_no_err_stub 24
-isr_no_err_stub 25
-isr_no_err_stub 26
-isr_no_err_stub 27
-isr_no_err_stub 28
-isr_no_err_stub 29
-isr_err_stub    30
-isr_no_err_stub 31
-
-;; Avoiding fault for reserved ints
-isr_err_stub 112
-isr_err_stub 113
-isr_err_stub 114
-isr_err_stub 115
-isr_err_stub 116
-isr_err_stub 117
-isr_err_stub 118
-isr_err_stub 119
-isr_err_stub 120
-
+%assign i 0 
+%rep    255
+    isr_err_stub i
+%assign i i+1 
+%endrep
 
 global isr_stub_table
 
 ;; Defining tables with stubs
 isr_stub_table:
 %assign i 0 
-%rep    32 
+%rep    255
     dq isr_stub_%+i
 %assign i i+1 
 %endrep

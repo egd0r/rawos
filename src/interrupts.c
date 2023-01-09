@@ -24,12 +24,15 @@ void print_reg_state(int_frame frame) {
 }
 
 //Interrupt handlers
-__attribute__((interrupt));
 void exception_handler(int_frame frame) {
 	printf("Recoverable interrupt 0x%2x\n", frame.vector);
-	print_reg_state(frame);
+	// print_reg_state(frame);
+	if (frame.vector >= 0x20 && frame.vector < 0x30) {
+		// interrupt 20h corresponds to PIT
+		picEOI(frame.vector-PIC1_OFFSET);
+	}
 
-    __asm__ volatile ("cli; hlt"); // Completely hangs the computer
+    // __asm__ volatile ("cli; hlt"); // Completely hangs the computer
 	return;
 }
 
@@ -117,6 +120,7 @@ void idt_init() {
 	//KB stuff
 	outb(PIC1_DATA, 0b11111101); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 
+	// idt_set_descriptor(0x20, &pit, IDT_TA_InterruptGate); //Programmable interrupt timer, for scheduling tasks
 	idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
 
 	__asm__ volatile("lidt %0" : : "m"(idtr));
