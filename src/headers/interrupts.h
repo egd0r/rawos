@@ -50,11 +50,13 @@ typedef struct {
 	uint64_t rcx;
 	uint64_t rbx;
 	uint64_t rax;
-} int_frame;
+	uint64_t rip;
+	uint64_t rsp;
+} INT_FRAME;
 
 //Need to make available for assembly routines
-void exception_handler(int_frame frame);
-void panic(int_frame frame);
+void exception_handler(INT_FRAME frame);
+void panic(INT_FRAME frame);
 // void pagefault_handler();
 // void doublefault_handler();
 // void gpfault_handler();
@@ -63,3 +65,5 @@ void panic(int_frame frame);
 
 void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags);
 void idt_init();
+
+void activate_interrupts();

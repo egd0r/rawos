@@ -6,8 +6,18 @@ void printf (const char *format, ...);
 #include "headers/interrupts.h"
 #include "headers/stdarg.h"
 #include "headers/paging.h"
-
 #include "headers/memory.h"
+#include "headers/multitasking.h"
+
+void taskA() {
+    while(1)
+        printf("TaskA! ");
+}
+
+void taskB() {
+    while(1)
+        printf("TaskB! ");
+}
 
 //Try and parse tag without framebuffer enabled
 // Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
@@ -73,6 +83,11 @@ int kmain(unsigned long mbr_addr) {
     // printf("\nTesting page fault: %d\n", 14);
     // int *testpf = 0x80085405835;
     // *testpf = 5; // lel
+
+    // create_task(HERE);
+    create_task(&taskA);
+    create_task(&taskB);
+    activate_interrupts();
     
     
     while (1) {

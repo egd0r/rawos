@@ -1,4 +1,5 @@
 #include "headers/interrupts.h"
+#include "headers/multitasking.h"
 #include "headers/vga.h" // For prints
 
 static idtr_t idtr;
@@ -13,7 +14,7 @@ void print_reg(char *name, uint64_t reg) {
 	printf("    %s    0x%8x:%8x\n", name, hi, lo);
 }
 
-void print_reg_state(int_frame frame) {
+void print_reg_state(INT_FRAME frame) {
 	printf("DUMP:\n");
 	print_reg("RDI", frame.rdi);
 	print_reg("RSI", frame.rsi);
@@ -23,12 +24,38 @@ void print_reg_state(int_frame frame) {
 	print_reg("RAX", frame.rax);
 }
 
+void task_switch_int(INT_FRAME frame) {
+	// Save context
+	CPU_STATE state = {
+		.rdi = frame.rdi,
+		.rsi = frame.rsi,
+		.rdx = frame.rdx,
+		.rcx = frame.rcx,
+		.rbx = frame.rbx,
+		.rax = frame.rax,
+		.rsp = frame.rsp
+	};
+	// Pass to scheduler, get new context
+	CPU_STATE *new_state = schedule(state);
+
+	// Placing correct values on stack
+	frame.rdi = new_state->rdi;
+	frame.rsi = new_state->rsi;
+	frame.rdx = new_state->rdx;
+	frame.rcx = new_state->rcx;
+	frame.rbx = new_state->rbx;
+	frame.rax = new_state->rax;
+	frame.rsp = new_state->rsp;
+}
+
 //Interrupt handlers
-void exception_handler(int_frame frame) {
-	printf("Recoverable interrupt 0x%2x\n", frame.vector);
+void exception_handler(INT_FRAME frame) {
+	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
 	if (frame.vector >= 0x20 && frame.vector < 0x30) {
 		// interrupt 20h corresponds to PIT
+		// Switch contexts 
+		task_switch_int(frame);
 		picEOI(frame.vector-PIC1_OFFSET);
 	}
 
@@ -38,7 +65,7 @@ void exception_handler(int_frame frame) {
 
 
 __attribute__((interrupt));
-void panic(int_frame frame) {
+void panic(INT_FRAME frame) {
 	__asm__ volatile ("cli");
 	printf("Non recoverable interrupt 0x%2x, PANIC PANIC PANIC\n", frame.vector);
 	print_reg_state(frame);
@@ -118,12 +145,15 @@ void idt_init() {
 	remapPIC();
 
 	//KB stuff
-	outb(PIC1_DATA, 0b11111101); // Enabling keyboard by unmasking correct line in PIC master
+	outb(PIC1_DATA, 0b11111100); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 
 	// idt_set_descriptor(0x20, &pit, IDT_TA_InterruptGate); //Programmable interrupt timer, for scheduling tasks
 	idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
 
 	__asm__ volatile("lidt %0" : : "m"(idtr));
+}
+
+void activate_interrupts() {
 	__asm__ volatile("sti");
 }
 
