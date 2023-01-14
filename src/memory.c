@@ -1,17 +1,6 @@
 #include "headers/memory.h"
 #include "headers/vga.h"
 
-// Stack based
-typedef struct {
-    void *start;
-    void *end;
-    void *sp; // Stack pointer will progress to allocate frames
-    int max_allocatable;
-    int reserved;
-} memory_regions;
-
-memory_regions *phys_mem_regions[100]; // 100 memory regions each with stack pointers
-
 // Bitmap based
 void *BITMAP_base;
 void *BITMAP_end;

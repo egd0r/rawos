@@ -24,28 +24,30 @@ void print_reg_state(INT_FRAME frame) {
 	print_reg("RAX", frame.rax);
 }
 
-void task_switch_int(INT_FRAME frame) {
+void task_switch_int(INT_FRAME *frame) {
 	// Save context
-	CPU_STATE state = {
-		.rdi = frame.rdi,
-		.rsi = frame.rsi,
-		.rdx = frame.rdx,
-		.rcx = frame.rcx,
-		.rbx = frame.rbx,
-		.rax = frame.rax,
-		.rsp = frame.rsp
-	};
+	CPU_STATE state;
+	state.rdi = frame->rdi;
+	state.rsi = frame->rsi;
+	state.rdx = frame->rdx;
+	state.rcx = frame->rcx;
+	state.rbx = frame->rbx;
+	state.rax = frame->rax;
+	state.rsp = frame->rsp;
+	state.rip = frame->rip;
+
 	// Pass to scheduler, get new context
 	CPU_STATE *new_state = schedule(state);
 
 	// Placing correct values on stack
-	frame.rdi = new_state->rdi;
-	frame.rsi = new_state->rsi;
-	frame.rdx = new_state->rdx;
-	frame.rcx = new_state->rcx;
-	frame.rbx = new_state->rbx;
-	frame.rax = new_state->rax;
-	frame.rsp = new_state->rsp;
+	frame->rdi = new_state->rdi;
+	frame->rsi = new_state->rsi;
+	frame->rdx = new_state->rdx;
+	frame->rcx = new_state->rcx;
+	frame->rbx = new_state->rbx;
+	frame->rax = new_state->rax;
+	// frame.rsp = new_state->rsp;
+	frame->rip = new_state->rip;
 }
 
 //Interrupt handlers
@@ -55,11 +57,10 @@ void exception_handler(INT_FRAME frame) {
 	if (frame.vector >= 0x20 && frame.vector < 0x30) {
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
-		task_switch_int(frame);
+		task_switch_int(&frame);
 		picEOI(frame.vector-PIC1_OFFSET);
 	}
 
-    // __asm__ volatile ("cli; hlt"); // Completely hangs the computer
 	return;
 }
 

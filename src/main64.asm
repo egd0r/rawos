@@ -151,9 +151,10 @@ section .text
 extern exception_handler
 extern panic
 
+extern test_state
+
 ;; Pushing register state to stack to avoid bad things!
 %macro pushreg 0
-push rsp;
 push rax
 push rbx
 push rcx
@@ -170,7 +171,6 @@ pop rdx
 pop rcx
 pop rbx
 pop rax
-pop rsp
 %endmacro
 
 ;; Defining macros for error stubs
@@ -181,10 +181,11 @@ isr_stub_%+%1:
     pushreg
     push qword %1
     ; push qword 0xEE
-    lea rdi, [rsp + 0x09] ;; Load address of stack + 7 for start of struct
+    lea rdi, [rsp + 0x0D] ;; Load address of stack + 7 for start of struct + 4 for OG
     call exception_handler
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
+    ; call test_state
     iretq
 %endmacro
 
