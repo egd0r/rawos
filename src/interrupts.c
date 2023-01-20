@@ -16,52 +16,99 @@ void print_reg(char *name, uint64_t reg) {
 
 void print_reg_state(INT_FRAME frame) {
 	printf("DUMP:\n");
-	print_reg("RDI", frame.rdi);
-	print_reg("RSI", frame.rsi);
-	print_reg("RDX", frame.rdx);
-	print_reg("RCX", frame.rcx);
+	print_reg("RSP", frame.rsp);
+	print_reg("R15", frame.r15);
+	print_reg("R14", frame.r14);
+	print_reg("R13", frame.r13);
+	print_reg("R12", frame.r12);
 	print_reg("RBX", frame.rbx);
-	print_reg("RAX", frame.rax);
+	print_reg("RBP", frame.rbp);
+	print_reg("RIP", frame.rip);
+	print_reg("CS ", frame.cs);
 }
-
-void task_switch_int(INT_FRAME *frame) {
+                  
+void * task_switch_int(INT_FRAME *frame) {
 	// Save context
 	CPU_STATE state;
-	state.rdi = frame->rdi;
-	state.rsi = frame->rsi;
-	state.rdx = frame->rdx;
-	state.rcx = frame->rcx;
-	state.rbx = frame->rbx;
-	state.rax = frame->rax;
 	state.rsp = frame->rsp;
+	state.r15 = frame->r15;
+	state.r14 = frame->r14;
+	state.r13 = frame->r13;
+	state.r12 = frame->r12;
+	state.rbx = frame->rbx;
+	state.rbp = frame->rbp;
 	state.rip = frame->rip;
+	state.cs  = frame->cs;
+	state.rsp = frame; // Save address of top of frame
+	state.eflags = 0x202; //0x202;
+	// state.rflags = frame->rflags;
 
 	// Pass to scheduler, get new context
-	CPU_STATE *new_state = schedule(state);
+	TASK_ITEM *new_task = schedule(state);
+	if (new_task == NULL) return frame;
 
-	// Placing correct values on stack
-	frame->rdi = new_state->rdi;
-	frame->rsi = new_state->rsi;
-	frame->rdx = new_state->rdx;
-	frame->rcx = new_state->rcx;
-	frame->rbx = new_state->rbx;
-	frame->rax = new_state->rax;
-	// frame.rsp = new_state->rsp;
-	frame->rip = new_state->rip;
+	CPU_STATE *new_state = new_task->state;
+
+	// If stack has not moved, process is starting, must initialise stack
+	// Otherwise, context has already been saved on the stack.
+	if (new_state->rsp == &(new_task->stack[STACK_SIZE-1])) {
+		// Placing correct values on stack - checked and is filling correctly
+		INT_FRAME *new_frame = ((INT_FRAME *)(new_state->rsp-sizeof(INT_FRAME)));
+
+		// frame->vector = 0x20;
+		// frame->rsp = frame->rsp; // CHANGE!
+		// frame->r15 = new_state->r15;
+		// frame->r14 = new_state->r14;
+		// frame->r13 = new_state->r13;
+		// frame->r12 = new_state->r12;
+		// frame->rbx = new_state->rbx;
+		// frame->rbp = new_state->rbp;
+		// frame->rip = new_state->rip;
+		// frame->cs  = new_state->cs; // Keep as start of stack if this pointer is replacing stack at end...
+		
+		// return frame;
+
+		new_frame->vector = 0x20;
+		new_frame->rsp = &new_frame->rsp; // new_frame+sizeof(INT_FRAME); 
+		new_frame->r15 = 0xF84848448484848F; //new_state->r15;
+		new_frame->r14 = 84; //new_state->r14;
+		new_frame->r13 = 84; //new_state->r13;
+		new_frame->r12 = 84; //new_state->r12;
+		new_frame->rbx = new_state->rbx;
+		new_frame->rbp = new_state->rbp;
+		new_frame->rip = new_state->rip;
+		new_frame->eflags = new_state->eflags;
+		new_frame->cs  = new_state->cs; // Keep as start of stack if this pointer is replacing stack at end...
+
+		return new_frame;
+	}
+	
+	return new_state->rsp;
+	// frame->rflags = new_state.rflags;
 }
 
 //Interrupt handlers
-void exception_handler(INT_FRAME frame) {
+void * exception_handler(INT_FRAME frame) {
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
+	void *ret = &frame;
 	if (frame.vector >= 0x20 && frame.vector < 0x30) {
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
-		task_switch_int(&frame);
+		ret = task_switch_int(&frame);
 		picEOI(frame.vector-PIC1_OFFSET);
+	} else if (frame.vector == 0x0D) {
+		printf("General protection fault -_-\n");
+		print_reg_state(frame);
+		__asm__ volatile ("hlt");
+	} else {
+		cls();
+		printf("Interrupted %d\n", frame.vector);
+		print_reg_state(frame);
+		__asm__ volatile ("hlt");
 	}
 
-	return;
+	return ret;
 }
 
 

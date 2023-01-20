@@ -44,20 +44,20 @@ typedef struct {
 
 typedef struct {
 	uint64_t vector;
-	uint64_t rdi;
-	uint64_t rsi;
-	uint64_t rdx;
-	uint64_t rcx;
+	uint64_t r15;
+	uint64_t r14;
+	uint64_t r13;
+	uint64_t r12;
 	uint64_t rbx;
-	uint64_t rax;
+	uint64_t rbp;
 	uint64_t rip;
 	uint64_t cs;
-	uint64_t rflags;
+	uint64_t eflags;
 	uint64_t rsp;
 } INT_FRAME;
 
 //Need to make available for assembly routines
-void exception_handler(INT_FRAME frame);
+void * exception_handler(INT_FRAME frame);
 void panic(INT_FRAME frame);
 // void pagefault_handler();
 // void doublefault_handler();

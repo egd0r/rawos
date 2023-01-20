@@ -2,8 +2,13 @@
 #include "headers/multitasking.h"
 #include "headers/memory.h"
 
-TASK_ITEM *current_task = NULL;
-TASK_ITEM *queue_end = NULL;
+TQ_STRUCT *initial_struct = NULL;
+
+void init_tasks() {
+    initial_struct = (TQ_STRUCT *)new_malloc(sizeof(TQ_STRUCT *));
+    initial_struct->size = 0;
+    initial_struct->current_task = -1;
+}
 
 /*
     Kernel entry will create init process as first process with same state
@@ -11,39 +16,29 @@ TASK_ITEM *queue_end = NULL;
 */
 int create_task(void *entry_point) {
     // if (entry_point == NULL && current_task == NULL); // Condition for init process 
+    if (initial_struct == NULL) init_tasks();
+
     TASK_ITEM *new_task = new_malloc(sizeof(TASK_ITEM));
+    CPU_STATE *new_state = new_malloc(sizeof(CPU_STATE));
+
+    new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
+
+    initial_struct->tasks[initial_struct->size++] = new_task;
 
     // FILL VALUES
-    new_task->PID = 0;
+    new_task->state = new_state;
+    new_task->PID = initial_struct->size;
     new_task->switches = 0;
-    new_task->next = new_task;
-    new_task->prev = new_task;
-    memset(&(new_task->state), 0, sizeof(CPU_STATE)); // Clear CPU_STATE
+    memset(new_state, 0, sizeof(CPU_STATE)); // Clear CPU_STATE
 
-    new_task->state.rip = (uint64_t)entry_point;
-    new_task->state.eflags = 0x202;
-    new_task->state.cs = 0x08;
+    new_task->state->rip = (uint64_t)entry_point;
+    new_task->state->eflags = 0x202;
+    new_task->state->cs = 0x08;
+    new_task->state->rsp = &((new_task->stack)[STACK_SIZE-1]);
+    new_task->state->rbp = 0;
 
     // new_task->stack ; // Point to end
 
-    if (current_task == NULL) {
-        printf("Created a new task with PID %d\n", new_task->PID);    
-        current_task = new_task;
-        queue_end = new_task;
-        return;
-    }
-
-    new_task->PID = current_task->prev->PID += 1;
-
-    new_task->next = queue_end;
-    new_task->prev = current_task;
-
-    queue_end->prev = new_task;
-    current_task->next = new_task;
-
-    new_task->parent_PID = current_task->PID;
-
-    queue_end = new_task;
     printf("Created a new task with PID %d\n", new_task->PID);    
 
     return;    
@@ -55,17 +50,30 @@ int kill_task(int pid) {
 }
 
 // Simple RR scheduler
-CPU_STATE *schedule(CPU_STATE curr_proc_state) {
-    if (current_task == NULL) return;
+TASK_ITEM * schedule(CPU_STATE curr_proc_state) {
+    if (initial_struct->size <= 0) { // Returns current state if no tasks are defined
+        return NULL;
+    }
 
-    current_task->switches++;
-    current_task->state = curr_proc_state;
+    // Save the state of the current task context
+    if (initial_struct->current_task >= 0) {
+        *(initial_struct->tasks[initial_struct->current_task]->state) = curr_proc_state;
+        initial_struct->tasks[initial_struct->current_task]->switches++;
+    }
+        
 
-    current_task = current_task->prev;
+    // Increase current count or restart    
+    if (++(initial_struct->current_task) >= initial_struct->size)
+        initial_struct->current_task %= initial_struct->size;
 
-    return &(current_task->state);
+    // Return context of new one
+    return (initial_struct->tasks[initial_struct->current_task]);
 }
 
 void test_state() {
     printf("Testing register state;");
+}
+
+void disable_interrupts() {
+    asm("cli");
 }

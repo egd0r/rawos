@@ -155,22 +155,22 @@ extern test_state
 
 ;; Pushing register state to stack to avoid bad things!
 %macro pushreg 0
-push rax
+push rbp
 push rbx
-push rcx
-push rdx
-push rsi
-push rdi
+push r12
+push r13
+push r14
+push r15
 %endmacro
 
 ;; Popping register state from stack
 %macro popreg 0
-pop rdi
-pop rsi
-pop rdx
-pop rcx
+pop r15
+pop r14
+pop r13
+pop r12
 pop rbx
-pop rax
+pop rbp
 %endmacro
 
 ;; Defining macros for error stubs
@@ -181,8 +181,9 @@ isr_stub_%+%1:
     pushreg
     push qword %1
     ; push qword 0xEE
-    lea rdi, [rsp + 0x0D] ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov rdi, [rsp+0x0D] ;; Load address of stack + 7 for start of struct + 4 for OG
     call exception_handler
+    mov rsp, rax ;; Set new stack
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
     ; call test_state

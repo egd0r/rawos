@@ -9,14 +9,29 @@ void printf (const char *format, ...);
 #include "headers/memory.h"
 #include "headers/multitasking.h"
 
+uint64_t bumbum = 0;
+
 void taskA() {
-    while(1)
-        printf("TaskA! ");
+    // for (uint64_t i=1; i<~0; i++) {
+    //     i--; // interrupts disabled?
+    // }
+    while (1)
+        printf("A");
 }
 
 void taskB() {
-    while(1)
-        printf("TaskB! ");
+    // for (uint64_t b=1; b<~0; b++) {
+    //     b--; // interrupts disabled?
+    // }
+    while(1) {
+        printf("B");
+    }
+}
+
+void taskC() {
+    while (1) {
+        printf("C");
+    }
 }
 
 //Try and parse tag without framebuffer enabled
@@ -85,9 +100,9 @@ int kmain(unsigned long mbr_addr) {
     // *testpf = 5; // lel
 
     // create_task(HERE);
-    create_task(0x00); // This is init, doesn't matter if entry pt is not set since it's initial task
     create_task(&taskA);
     create_task(&taskB);
+    create_task(&taskC);
     activate_interrupts();
 
     while (1) {
