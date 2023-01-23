@@ -9,20 +9,16 @@ void printf (const char *format, ...);
 #include "headers/memory.h"
 #include "headers/multitasking.h"
 
-uint64_t bumbum = 0;
+/*
+    Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
 
+*/
 void taskA() {
-    // for (uint64_t i=1; i<~0; i++) {
-    //     i--; // interrupts disabled?
-    // }
     while (1)
         printf("A");
 }
 
 void taskB() {
-    // for (uint64_t b=1; b<~0; b++) {
-    //     b--; // interrupts disabled?
-    // }
     while(1) {
         printf("B");
     }
@@ -90,9 +86,6 @@ int kmain(unsigned long mbr_addr) {
     *((int *)0xb8900) = mbr_addr;   // print address
     // *((int *)0xb8900) = 0x00000000;
 
-
-
-
     printf("SPINNING!\n"); 
     
     // printf("\nTesting page fault: %d\n", 14);
@@ -100,13 +93,14 @@ int kmain(unsigned long mbr_addr) {
     // *testpf = 5; // lel
 
     // create_task(HERE);
+    create_task(0x00); // Init task - can move this to init_multitasking or something?
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
-    activate_interrupts();
+    activate_interrupts(); // sti
 
     while (1) {
-    //   printf("kernel task");
+      printf("kernel task");
     }; //Spin on hang
     // Spawn init process
     

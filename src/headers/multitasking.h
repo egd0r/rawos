@@ -17,28 +17,50 @@ typedef struct cpu_state {
 } CPU_STATE;
 
 #define STACK_SIZE 4096
+#define ONE_OVER_TWO 0x80000000000000000000
+
+#define CLI()		asm("cli");
+#define STI()		asm("sti");
+
+extern uint64_t ms_since_boot; // Making ms_since_boot global
 
 // Organisaion
-typedef struct task_queue {
+enum TASK_STATE {
+	RUNNING,
+	BLOCKED,
+	READY
+};
+
+typedef struct task_item_ll {
     int PID;
+	enum TASK_STATE task_state;
     CPU_STATE * state;
     int parent_PID;
     int switches;
     uint8_t *stack;
-} TASK_ITEM;
+	struct task_item_ll *next;
+	struct task_item_ll *prev;
+} TASK_LL;
 
-typedef struct task_queue_struct {
-    int current_task;
-    int size;
-    TASK_ITEM *tasks[MAX_TASKS_PER_BLOCK];
-} TQ_STRUCT;
+// For organisation of chunks of tasks if needed
+typedef struct task_item_group {
+	TASK_LL *ready_start;
+	TASK_LL *ready_end;
+	TASK_LL *current_item;
+	TASK_LL *blocked;
+	TASK_LL *terminated_curr;
+} TASK_GRP;
 
 // Process management
 int create_task(void *entry_point);
 int kill_task(int pid);
 
-TASK_ITEM * schedule(CPU_STATE curr_proc_state);
+void lock_scheduler();
+void unlock_scheduler();
+TASK_LL * schedule(CPU_STATE curr_proc_state);
 
-void test_state();
+TASK_LL * find_prev_task(int pid);
+
+#define TASK(pid) find_prev_task(pid)->next
 
 

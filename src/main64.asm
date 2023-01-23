@@ -206,3 +206,17 @@ isr_stub_table:
 %assign i i+1 
 %endrep
 
+extern lock_scheduler
+extern unlock_scheduler
+extern switch_task
+
+;; For sleep: save state in current -> add to blocked -> switch to next task
+;; Assumes state has been saved
+;; Input: rax -> stack pointer holding INT_FRAME of state
+switch_task:
+    call lock_scheduler
+    mov rsp, rax
+    pop rdi
+    popreg
+    call unlock_scheduler
+    ret

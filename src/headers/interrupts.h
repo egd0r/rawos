@@ -14,6 +14,9 @@
 #define PIC1_OFFSET  0x20 // Up to 0x1F taken by x86_64
 #define PIC2_OFFSET	 0x28
 
+#define PIT_CHNL_0	 0x40
+// #define PIT_FREQ	 0x
+
 //Defining values passed to PIC
 #define ICW1_INIT	0x10
 #define ICW1_ICW4	0x01

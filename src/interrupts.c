@@ -1,11 +1,23 @@
 #include "headers/interrupts.h"
 #include "headers/multitasking.h"
 #include "headers/vga.h" // For prints
+// #include "headers/syscalls.h"
 
 static idtr_t idtr;
 
 __attribute__((aligned(0x10))) 
 static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
+
+
+/*
+	Time alive incremented with tick times with each PIT IRQ call
+*/
+uint64_t ms_since_boot = 0x00;
+uint64_t frac_ms_since_boot = 0x00;
+
+uint64_t time_between_irq_ms = 0x0A;
+uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A;
+
 
 void print_reg(char *name, uint64_t reg) {
 	uint32_t hi = (reg & 0xFFFFFFFF00000000) >> 32;
@@ -41,10 +53,13 @@ void * task_switch_int(INT_FRAME *frame) {
 	state.cs  = frame->cs;
 	state.rsp = frame; // Save address of top of frame
 	state.eflags = 0x202; //0x202;
-	// state.rflags = frame->rflags;
 
 	// Pass to scheduler, get new context
-	TASK_ITEM *new_task = schedule(state);
+	
+	// Locking and unlocking implementations written in for DPC(?)
+	lock_scheduler();
+	TASK_LL *new_task = schedule(state);
+	unlock_scheduler();
 	if (new_task == NULL) return frame;
 
 	CPU_STATE *new_state = new_task->state;
@@ -55,25 +70,12 @@ void * task_switch_int(INT_FRAME *frame) {
 		// Placing correct values on stack - checked and is filling correctly
 		INT_FRAME *new_frame = ((INT_FRAME *)(new_state->rsp-sizeof(INT_FRAME)));
 
-		// frame->vector = 0x20;
-		// frame->rsp = frame->rsp; // CHANGE!
-		// frame->r15 = new_state->r15;
-		// frame->r14 = new_state->r14;
-		// frame->r13 = new_state->r13;
-		// frame->r12 = new_state->r12;
-		// frame->rbx = new_state->rbx;
-		// frame->rbp = new_state->rbp;
-		// frame->rip = new_state->rip;
-		// frame->cs  = new_state->cs; // Keep as start of stack if this pointer is replacing stack at end...
-		
-		// return frame;
-
 		new_frame->vector = 0x20;
 		new_frame->rsp = &new_frame->rsp; // new_frame+sizeof(INT_FRAME); 
-		new_frame->r15 = 0xF84848448484848F; //new_state->r15;
-		new_frame->r14 = 84; //new_state->r14;
-		new_frame->r13 = 84; //new_state->r13;
-		new_frame->r12 = 84; //new_state->r12;
+		new_frame->r15 = new_state->r15;
+		new_frame->r14 = new_state->r14;
+		new_frame->r13 = new_state->r13;
+		new_frame->r12 = new_state->r12;
 		new_frame->rbx = new_state->rbx;
 		new_frame->rbp = new_state->rbp;
 		new_frame->rip = new_state->rip;
@@ -84,10 +86,10 @@ void * task_switch_int(INT_FRAME *frame) {
 	}
 	
 	return new_state->rsp;
-	// frame->rflags = new_state.rflags;
 }
 
 //Interrupt handlers
+int counter = 0;
 void * exception_handler(INT_FRAME frame) {
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
@@ -95,12 +97,20 @@ void * exception_handler(INT_FRAME frame) {
 	if (frame.vector >= 0x20 && frame.vector < 0x30) {
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
+		ms_since_boot += time_between_irq_ms;
+		uint64_t temp = frac_ms_since_boot + time_between_irq_frac;
+		if (frac_ms_since_boot > temp) ms_since_boot++; // Overflow
+		frac_ms_since_boot += temp;
+
 		ret = task_switch_int(&frame);
+
 		picEOI(frame.vector-PIC1_OFFSET);
 	} else if (frame.vector == 0x0D) {
 		printf("General protection fault -_-\n");
 		print_reg_state(frame);
 		__asm__ volatile ("hlt");
+	} else if (frame.vector == 0x80) {
+		// syscall_handler(&frame);
 	} else {
 		cls();
 		printf("Interrupted %d\n", frame.vector);
@@ -191,7 +201,9 @@ void idt_init() {
 	// idt_set_descriptor(0x0D, &gpfault_handler, IDT_TA_InterruptGate);
 	
 	remapPIC();
-
+	
+	// PIT
+	set_pit_freq(11932);
 	//KB stuff
 	outb(PIC1_DATA, 0b11111100); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 
@@ -205,11 +217,26 @@ void activate_interrupts() {
 	__asm__ volatile("sti");
 }
 
+/*
+	Waits for a bit, some devices are slowwwww
+*/
+static inline void io_wait(void) {
+    outb(0x80, 0); // Unused IO port - wasted IO cycle gives other devices time to catch up
+}
+
 // IO functions - for communicating on IO bus
 void picEOI(unsigned char irq) {
 	if (irq >= 8)
 		outb(PIC2_COMMAND, PIC_EOI);
 	outb(PIC1_COMMAND, PIC_EOI); // If IRQ came from slave, EOI must be sent to both
+}
+
+void set_pit_freq(uint16_t reload_count) {
+	CLI();
+	outb(PIT_CHNL_0, reload_count & 0xFF);
+	io_wait();
+	outb(PIT_CHNL_0, (reload_count & 0xFF00) >> 8);
+	STI();
 }
 
 /*
@@ -232,13 +259,6 @@ static inline uint8_t inb(uint16_t port) {
                    : "=a"(ret)
                    : "Nd"(port) );
     return ret;
-}
-
-/*
-	Waits for a bit, some devices are slowwwww
-*/
-static inline void io_wait(void) {
-    outb(0x80, 0); // Unused IO port - wasted IO cycle gives other devices time to catch up
 }
 
 // Remapping PIC
