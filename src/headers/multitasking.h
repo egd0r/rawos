@@ -34,10 +34,11 @@ enum TASK_STATE {
 typedef struct task_item_ll {
     int PID;
 	enum TASK_STATE task_state;
-    CPU_STATE * state;
     int parent_PID;
     int switches;
     uint8_t *stack;
+    CPU_STATE * state;
+	uint64_t *cr3;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;

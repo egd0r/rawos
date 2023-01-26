@@ -14,17 +14,26 @@ void printf (const char *format, ...);
 
 */
 void taskA() {
+    // for (int i=0; i<100; i++) {
+    //     i--;
+    // }
     while (1)
         printf("A");
 }
 
 void taskB() {
+    // for (int i=0; i<100; i++) {
+    //     i--;
+    // }
     while(1) {
         printf("B");
     }
 }
 
 void taskC() {
+    // for (int i=0; i<100; i++) {
+    //     i--;
+    // }
     while (1) {
         printf("C");
     }
@@ -100,7 +109,7 @@ int kmain(unsigned long mbr_addr) {
     activate_interrupts(); // sti
 
     while (1) {
-      printf("kernel task");
+    //   printf("kernel task");
     }; //Spin on hang
     // Spawn init process
     

@@ -126,6 +126,7 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
 }
 
 // For contiguous physical allocations, DMA etc
+// Size is multiples of 4096
 void * kalloc_physical(size_t size) {
     // Loops through and finds free space, returns memory address
 
@@ -212,7 +213,10 @@ void *allocate_page(size_t size) {
 // Takes NUMBER OF PAGES TO ALLOCATE
 uint64_t previous_allocation = NULL;
 uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
-    if (n == 0) return previous_allocation;
+    if (n == 0) {
+        printf("No space in page table!\n");
+        return previous_allocation;
+    } 
 
     if (LVL == PT_LVL1) {
         // If we're at end walk final table and return free space

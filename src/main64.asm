@@ -71,48 +71,13 @@ MapPages:
                ; +1 for 2MB physical bitmap
     jne .loop
 
-
-    ;; Mapping page directory to itself
-    ; mov rax, (page_table_l2-0xFFFFFFFF80000000)
-    ; or rax, 0b11
-    ; mov [page_table_l3 + (511*8)], rax ;; Last L3 mapped here to L2
-
-    ; mov rax, (page_table_l1-0xFFFFFFFF80000000)
-    ; or rax, 0b11
-    ; mov [page_table_l2 + (511*8)], rax ;; Last entry of l2 maps to l1
-
     mov rax, (page_table_l4-0xFFFFFFFF80000000)
     or rax, 0b11
     mov [page_table_l4 + (510*8)], rax ;; Last entry of l1 holds physical address of l4
 
-; KERNEL_OFFSET =           0xFFFFFFFF80000000;
-    ;; Disable paging
-    ; mov rax, cr0
-    ; and rax, ~(1 << 31)
-    ; mov cr0, rax
-
-    ; mov rax, cr3
-
-    ; mov cr3, rax
-    
-    ; ;; Update physical address of table
-
     mov rax, (page_table_l4-0xFFFFFFFF80000000)
     mov cr3, rax
 
-    ;; Update CR3 here
-
-
-
-    ; ; ;; Re-enable paging
-    ; mov rax, cr0
-    ; or rax, 1 << 31
-    ; mov cr0, rax
-
-
-    ; mov dword [0xb8000], 0x2f6b2f4f
-
-    ; hlt
     ret
 
 
@@ -134,7 +99,11 @@ stk_bott:
     resb 4096 * 16 ;; 32 * 4k = 128k
 stk_top:
 
+
+;; Global descriptor table
+;; 
 section .rodata
+global gdt64
 gdt64:
 	dq 0 ; zero entry 
 .code_segment: equ $ - gdt64
