@@ -18,6 +18,11 @@ uint64_t frac_ms_since_boot = 0x00;
 uint64_t time_between_irq_ms = 0x0A;
 uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A;
 
+void get_virt_test_i() {
+	print_reg("IDTR", (uint64_t)(&idtr));
+	print_reg("IDT", (uint64_t)idt);
+}
+
 
 void print_reg(char *name, uint64_t reg) {
 	uint32_t hi = (reg & 0xFFFFFFFF00000000) >> 32;

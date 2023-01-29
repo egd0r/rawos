@@ -11,7 +11,7 @@ void *create_page_table() {
 }
 
 // Returns physical address of virtual address mapping
-void * get_pagetable_entry(void *virt_addr, int mask) {
+void * get_pagetable_entry(uint64_t virt_addr) {
 
     int offset = virt_addr & 0xFFF;
     int l1 = (virt_addr >> 12) & 0x1FF;
@@ -26,17 +26,31 @@ void * get_pagetable_entry(void *virt_addr, int mask) {
     ptr = ((((uint64_t)ptr << 9) | l4 << 12) & PT_LVL3) | ((uint64_t)ptr & ~PT_LVL3);
     // Checking if present in L3
     if ((ptr[l3] & PRESENT) != PRESENT) return BAD_PTR;
+    if ((ptr[l3] & HUGE_PAGE) == HUGE_PAGE) {
+        void *ret = ptr[l3] & ~0xFFF; // This should be PT_LVL2 too?
+        ret += (virt_addr & PT_LVL2); // Adding offset
+        return ret;
+        // ptr[l3] holds physical address of huge page
+        // --> unmask
+        // --> calc offset from virtual address, add to ret
+        // --> return ret
+    } 
 
     ptr = ((((uint64_t)ptr << 9) | l3 << 12) & PT_LVL2) | ((uint64_t)ptr & ~PT_LVL2);
     // Checking if present in L2
     if ((ptr[l2] & PRESENT) != PRESENT) return BAD_PTR;
+    if ((ptr[l2] & HUGE_PAGE) == HUGE_PAGE) {
+        void *ret = ptr[l2] & ~0xFFF;
+        ret += (virt_addr & PT_LVL3); // Adding offset to physical address
+        return ret;
+    }
 
     ptr = ((((uint64_t)ptr << 9) | l2 << 12) & PT_LVL1) | ((uint64_t)ptr & ~PT_LVL1);
     // Checking if present in L1
     if ((ptr[l1] & PRESENT) != PRESENT) return BAD_PTR;
 
-    if (mask) return (ptr[l1] & ~0xFFF);
-    return pt_ptr[l1]; // Return entry with first 12 status bits masked out
+    // if (mask) return (ptr[l1] & ~0xFFF);
+    return ptr[l1]; // Return entry with first 12 status bits masked out
 }
 
 /*

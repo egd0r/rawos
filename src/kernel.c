@@ -13,6 +13,8 @@ void printf (const char *format, ...);
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
 
 */
+// Can align for memory safety when copying to user page table
+__attribute__((aligned(0x1000))) 
 void taskA() {
     // for (int i=0; i<100; i++) {
     //     i--;
@@ -78,7 +80,15 @@ int kmain(unsigned long mbr_addr) {
 
     // uint64_t *sbrk_eg = sbrk(0);
 
-    // int *arr = new_malloc(sizeof(int)*5);
+    int *arr = new_malloc(sizeof(int)*5);
+    uint64_t main_cr3 = (uint64_t)get_pagetable_entry(0xffffff7fbfdfe000) & ~0xFFF;
+    uint64_t taskA_phys = (uint64_t)get_pagetable_entry(&taskA);
+
+    print_reg("L4 physical", main_cr3);
+    print_reg("TA physical", taskA_phys);
+
+    get_virt_test_i();
+
 
     // for (int i=0; i<5; i++) {
     //     arr[i] = i;
@@ -102,11 +112,11 @@ int kmain(unsigned long mbr_addr) {
     // *testpf = 5; // lel
 
     // create_task(HERE);
-    create_task(0x00); // Init task - can move this to init_multitasking or something?
-    create_task(&taskA);
-    create_task(&taskB);
-    create_task(&taskC);
-    activate_interrupts(); // sti
+    // create_task(0x00); // Init task - can move this to init_multitasking or something?
+    // create_task(&taskA);
+    // create_task(&taskB);
+    // create_task(&taskC);
+    // activate_interrupts(); // sti
 
     while (1) {
     //   printf("kernel task");

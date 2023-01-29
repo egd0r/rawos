@@ -130,10 +130,14 @@ push r12
 push r13
 push r14
 push r15
+; mov rax, cr3
+; push rax
 %endmacro
 
 ;; Popping register state from stack
 %macro popreg 0
+; pop rax
+; mov cr3, rax
 pop r15
 pop r14
 pop r13
@@ -188,4 +192,8 @@ switch_task:
     pop rdi
     popreg
     call unlock_scheduler
+    mov rax, cr3
+    push rax
+    pop rax
+    mov cr3, rax
     ret

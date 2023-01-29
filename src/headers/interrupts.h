@@ -47,6 +47,7 @@ typedef struct {
 
 typedef struct {
 	uint64_t vector;
+	// uint64_t cr3
 	uint64_t r15;
 	uint64_t r14;
 	uint64_t r13;
@@ -72,3 +73,5 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags);
 void idt_init();
 
 void activate_interrupts();
+
+void get_virt_test_i();

@@ -214,7 +214,6 @@ void *allocate_page(size_t size) {
 uint64_t previous_allocation = NULL;
 uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
     if (n == 0) {
-        printf("No space in page table!\n");
         return previous_allocation;
     } 
 
