@@ -125,9 +125,6 @@ int create_task(void *entry_point) {
 
     TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
     
-    new_task->state = new_malloc(sizeof(INT_FRAME));
-    memset(new_task->state, 0, sizeof(INT_FRAME));
-
     INT_FRAME new_state = {0};
 
     // Unmasking and setting as CR3 of new process
@@ -151,8 +148,7 @@ int create_task(void *entry_point) {
     new_state.rbp = 0;
 
     new_task->stack -= sizeof(INT_FRAME);
-    *(new_task->state) = new_state;
-    *((INT_FRAME *)new_task->stack) = *(new_task->state);
+    *((INT_FRAME *)new_task->stack) = new_state;
 
     new_task->next = new_task;
     new_task->prev = new_task;
@@ -220,7 +216,7 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
         return NULL;
 
 
-    *(current_item->state) = *curr_proc_state; // Temp
+    // *(current_item->state) = *curr_proc_state; // Temp
 
     // This context is saved automatically
     current_item->stack = curr_proc_state; // Set to new rsp to not overwrite data

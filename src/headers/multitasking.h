@@ -5,19 +5,6 @@
 
 #include "interrupts.h"
 
-typedef struct cpu_state {
-	uint64_t r15;
-	uint64_t r14;
-	uint64_t r13;
-	uint64_t r12;
-	uint64_t rbx;
-	uint64_t rbp;
-	uint64_t rip;
-	uint64_t cs;
-	uint64_t eflags;
-	uint64_t rsp;
-} CPU_STATE;
-
 #define STACK_SIZE 4096
 #define ONE_OVER_TWO 0x80000000000000000000
 
