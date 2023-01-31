@@ -45,52 +45,35 @@ void print_reg_state(INT_FRAME frame) {
 }
                   
 void * task_switch_int(INT_FRAME *frame) {
-	// Save context
-	CPU_STATE state;
-	state.rsp = frame->rsp;
-	state.r15 = frame->r15;
-	state.r14 = frame->r14;
-	state.r13 = frame->r13;
-	state.r12 = frame->r12;
-	state.rbx = frame->rbx;
-	state.rbp = frame->rbp;
-	state.rip = frame->rip;
-	state.cs  = frame->cs;
-	state.rsp = frame; // Save address of top of frame
-	state.eflags = 0x202; //0x202;
-
 	// Pass to scheduler, get new context
-	
 	// Locking and unlocking implementations written in for DPC(?)
-	lock_scheduler();
-	TASK_LL *new_task = schedule(state);
-	unlock_scheduler();
+	TASK_LL *new_task = schedule(frame);
 	if (new_task == NULL) return frame;
 
-	CPU_STATE *new_state = new_task->state;
+	// CPU_STATE *new_state = new_task->state;
 
-	// If stack has not moved, process is starting, must initialise stack
-	// Otherwise, context has already been saved on the stack.
-	if (new_state->rsp == &(new_task->stack[STACK_SIZE-1])) {
-		// Placing correct values on stack - checked and is filling correctly
-		INT_FRAME *new_frame = ((INT_FRAME *)(new_state->rsp-sizeof(INT_FRAME)));
+	// // If stack has not moved, process is starting, must initialise stack
+	// // Otherwise, context has already been saved on the stack.
+	// if (new_state->rsp == &(new_task->stack[STACK_SIZE-1])) {
+	// 	// Placing correct values on stack - checked and is filling correctly
+	// 	INT_FRAME *new_frame = ((INT_FRAME *)(new_state->rsp-sizeof(INT_FRAME)));
 
-		new_frame->vector = 0x20;
-		new_frame->rsp = &new_frame->rsp; // new_frame+sizeof(INT_FRAME); 
-		new_frame->r15 = new_state->r15;
-		new_frame->r14 = new_state->r14;
-		new_frame->r13 = new_state->r13;
-		new_frame->r12 = new_state->r12;
-		new_frame->rbx = new_state->rbx;
-		new_frame->rbp = new_state->rbp;
-		new_frame->rip = new_state->rip;
-		new_frame->eflags = new_state->eflags;
-		new_frame->cs  = new_state->cs; // Keep as start of stack if this pointer is replacing stack at end...
+	// 	new_frame->vector = 0x20;
+	// 	new_frame->rsp = &new_frame->rsp; // new_frame+sizeof(INT_FRAME); 
+	// 	new_frame->r15 = new_state->r15;
+	// 	new_frame->r14 = new_state->r14;
+	// 	new_frame->r13 = new_state->r13;
+	// 	new_frame->r12 = new_state->r12;
+	// 	new_frame->rbx = new_state->rbx;
+	// 	new_frame->rbp = new_state->rbp;
+	// 	new_frame->rip = new_state->rip;
+	// 	new_frame->eflags = new_state->eflags;
+	// 	new_frame->cs  = new_state->cs; // Keep as start of stack if this pointer is replacing stack at end...
 
-		return new_frame;
-	}
+	// 	return new_frame;
+	// }
 	
-	return new_state->rsp;
+	return new_task->stack;
 }
 
 //Interrupt handlers
@@ -216,6 +199,7 @@ void idt_init() {
 	idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
 
 	__asm__ volatile("lidt %0" : : "m"(idtr));
+	CLI();
 }
 
 void activate_interrupts() {

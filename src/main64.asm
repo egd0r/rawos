@@ -104,15 +104,19 @@ stk_top:
 ;; 
 section .rodata
 global gdt64
+global gdtr_pt
 gdt64:
 	dq 0 ; zero entry 
 .code_segment: equ $ - gdt64
-	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment
+	dq (1 << 43) | (0 << 44) | (1 << 47) | (1 << 53) ; code segment for kernel
 .pointer:
 	dw $  - gdt64 - 1 ; length
 	dq gdt64 ; address
 
 
+gdtr_pt: ;; Pointer to GDT used after long jump
+    dw 0
+    dd 0
 
 
 section .text
@@ -181,19 +185,23 @@ isr_stub_table:
 
 extern lock_scheduler
 extern unlock_scheduler
-extern switch_task
+; global switch_task
 
-;; For sleep: save state in current -> add to blocked -> switch to next task
-;; Assumes state has been saved
-;; Input: rax -> stack pointer holding INT_FRAME of state
-switch_task:
-    call lock_scheduler
-    mov rsp, rax
-    pop rdi
-    popreg
-    call unlock_scheduler
-    mov rax, cr3
-    push rax
-    pop rax
-    mov cr3, rax
-    ret
+; ;; For sleep: save state in current -> add to blocked -> switch to next task
+; ;; Assumes state has been saved
+; ;; Input: rax -> stack pointer holding INT_FRAME of state
+; switch_task:
+;     call lock_scheduler
+;     mov rsp, rax
+;     pop rdi ;; Popping vector
+;     popreg  ;; Popping rest
+;     pop r10 ;; Popping RIP into r10
+;     call unlock_scheduler
+;     pop cs ;; Popping code segment
+;     pop rax ;; Popping rflags ???
+;     ; mov rax, cr3
+;     ; push rax
+;     ; pop rax
+;     ; mov cr3, rax
+;     push r10 ;; Pushing RIP to stack for return
+;     ret

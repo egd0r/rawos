@@ -95,53 +95,64 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
 */
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
-    uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L3 table
-    uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L2 table
-    uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L1 table
-    uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Linking L4 -> L3
-    l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
-    // Linking L3 -> L2
-    l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
-    // Linking L2 -> L1
-    l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);
-    
+    // uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Allocating new page for L3 table
+    // uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Allocating new page for L2 table
+    // uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Allocating new page for L1 table
+    // uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Linking L4 -> L3
+    // l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
+    // // Linking L3 -> L2
+    // l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
+    // // Linking L2 -> L1
+    // l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
 
-    // Creating entry for IDT virtual address in high memory
+    // // WAIT FOR SHARED MEMORY FUNCTIONALITY? Just some more paging methods
+    // // Creating entry for IDT virtual address in high memory
 
-    // Creating entry for GDT virtual address in high memory
+    // // Creating entry for GDT virtual address in high memory
 
-    // Getting L1 PTE of allocated page (masked physical address)
+    // // Getting L1 PTE of allocated page (masked physical address)
 
-    // Get physical address of entry point - this will be hugepaged so get_pagetable_entry needs to be modified
+    // // Get physical address of entry point - this will be hugepaged so get_pagetable_entry needs to be modified
 
-    uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
-    // Self referencing
-    l4_pt_virt[510] = l4_pt_phys;
+    // uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
+    // // Self referencing
+    // l4_pt_virt[510] = l4_pt_phys;
 
 
     TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
-    CPU_STATE *new_state = new_malloc(sizeof(CPU_STATE));
+    
+    new_task->state = new_malloc(sizeof(INT_FRAME));
+    memset(new_task->state, 0, sizeof(INT_FRAME));
+
+    INT_FRAME new_state = {0};
 
     // Unmasking and setting as CR3 of new process
-    new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+    // new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
 
     new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
+    new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
+
 
     // FILL VALUES
-    new_task->state = new_state;
     new_task->PID = PID_COUNTER++;
     new_task->switches = 0;
-    memset(new_state, 0, sizeof(CPU_STATE)); // Clear CPU_STATE
 
-    new_task->state->rip = (uint64_t)entry_point;
-    new_task->state->eflags = 0x202;
-    new_task->state->cs = 0x08;
-    new_task->state->rsp = &((new_task->stack)[STACK_SIZE-1]);
-    new_task->state->rbp = 0;
+    new_state.vector = 0x20;
+    new_state.rip = (uint64_t)entry_point;
+    new_state.eflags = 0x202;
+
+    // This code selector is what can take processor into ring 3
+    new_state.cs = 0x08;
+    new_state.rsp = new_task->stack; //
+    new_state.rbp = 0;
+
+    new_task->stack -= sizeof(INT_FRAME);
+    *(new_task->state) = new_state;
+    *((INT_FRAME *)new_task->stack) = *(new_task->state);
 
     new_task->next = new_task;
     new_task->prev = new_task;
@@ -204,11 +215,18 @@ int kill_task(int pid) {
 }
 
 // Simple RR scheduler
-TASK_LL * schedule(CPU_STATE curr_proc_state) {
+TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     if (ready_start == NULL)
         return NULL;
 
-    *(current_item->state) = curr_proc_state;
+
+    *(current_item->state) = *curr_proc_state; // Temp
+
+    // This context is saved automatically
+    current_item->stack = curr_proc_state; // Set to new rsp to not overwrite data
+
+    // current_item->stack -= sizeof(CPU_STATE);
+    // *((CPU_STATE *)current_item->stack) = curr_proc_state; // Saving new context
 
     current_item->task_state = READY;
     ready_end->next = current_item;

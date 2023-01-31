@@ -3,6 +3,8 @@
 // What is a task? What to save? How are they organised?
 #define MAX_TASKS_PER_BLOCK 128
 
+#include "interrupts.h"
+
 typedef struct cpu_state {
 	uint64_t r15;
 	uint64_t r14;
@@ -37,11 +39,13 @@ typedef struct task_item_ll {
     int parent_PID;
     int switches;
     uint8_t *stack;
-    CPU_STATE * state;
+    INT_FRAME * state; // This should be pointed to by the stack and not exist as a seperate structure
 	uint64_t *cr3;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;
+
+extern TASK_LL *current_item; // Making current item global for TESTING purposes 
 
 // For organisation of chunks of tasks if needed
 typedef struct task_item_group {
@@ -58,7 +62,7 @@ int kill_task(int pid);
 
 void lock_scheduler();
 void unlock_scheduler();
-TASK_LL * schedule(CPU_STATE curr_proc_state);
+TASK_LL * schedule(INT_FRAME *curr_proc_state);
 
 TASK_LL * find_prev_task(int pid);
 

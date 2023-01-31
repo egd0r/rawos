@@ -41,8 +41,16 @@ void taskC() {
     }
 }
 
-//Try and parse tag without framebuffer enabled
-// Getting struct as argument from rdi // 32 bit ptr => 0x 00 00 00 00
+// extern void switch_task();
+
+/*
+    TODO:
+        - ASM routine to switch tasks without having to trigger an interrupt so tasks can be pre-empted
+        - Find a way to share kernel structures across page tables in processes (shared memory)
+        - Message passing between processes
+        - InitRD which is loaded through GRUB, containing user processes - WCS don't need this can start all in kmain
+
+*/
 int kmain(unsigned long mbr_addr) {
     // Initialise IDT
     asm __volatile__("mov %rsp, [stk_top]"); // Recreating stack in kmain
@@ -111,12 +119,20 @@ int kmain(unsigned long mbr_addr) {
     // int *testpf = 0x80085405835;
     // *testpf = 5; // lel
 
+    // CAUSES 0x06 and TRIPLE FAULT OCCAISONALLY?
     // create_task(HERE);
-    // create_task(0x00); // Init task - can move this to init_multitasking or something?
-    // create_task(&taskA);
-    // create_task(&taskB);
-    // create_task(&taskC);
-    // activate_interrupts(); // sti
+    create_task(0x00); // Init task - can move this to init_multitasking or something?
+    create_task(&taskA);
+    create_task(&taskB);
+    create_task(&taskC);
+    activate_interrupts(); // sti
+    // CLI();
+
+    // Saves state on stack and selects a new process to run (sets current_item)
+    // schedule(*((INT_FRAME *)current_item->stack));
+    // Takes stack of item to switch to and performs context switch with ret
+    // -> Examine stack and swaps incase of error
+    // switch_task(current_item->stack);
 
     while (1) {
     //   printf("kernel task");

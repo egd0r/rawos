@@ -11,6 +11,10 @@ IDT:
     dw 0 ; len
     dd 0 ; base
 
+global mbootstruct
+mbootstruct:
+    dq 0 ;; Reserved for multiboot struct information
+
 start:
     cli ;; Disable interrupts - I'll be careful, promise!
 
@@ -178,7 +182,6 @@ stk_bott_boot:
 stk_top_boot:
 
 ; GDT
-global mbootstruct
 section .boot_rodata
 global boot_gdt64
 bits 64
@@ -190,5 +193,3 @@ boot_gdt64:
 	dw $  - boot_gdt64 - 1 ; length
 	dq boot_gdt64 ; address
 
-mbootstruct:
-    dq 0 ;; Reserved for multiboot struct information
