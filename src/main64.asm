@@ -185,23 +185,25 @@ isr_stub_table:
 
 extern lock_scheduler
 extern unlock_scheduler
-; global switch_task
+global switch_task
 
-; ;; For sleep: save state in current -> add to blocked -> switch to next task
-; ;; Assumes state has been saved
-; ;; Input: rax -> stack pointer holding INT_FRAME of state
-; switch_task:
-;     call lock_scheduler
-;     mov rsp, rax
-;     pop rdi ;; Popping vector
-;     popreg  ;; Popping rest
-;     pop r10 ;; Popping RIP into r10
-;     call unlock_scheduler
-;     pop cs ;; Popping code segment
-;     pop rax ;; Popping rflags ???
-;     ; mov rax, cr3
-;     ; push rax
-;     ; pop rax
-;     ; mov cr3, rax
-;     push r10 ;; Pushing RIP to stack for return
-;     ret
+;; For sleep: save state in current -> add to blocked -> switch to next task
+;; Assumes state has been saved
+;; Input: rdi -> stack pointer holding INT_FRAME of state
+switch_task:
+    ; call lock_scheduler
+    mov rsp, rdi
+    pop rdi ;; Popping vector
+    popreg  ;; Popping rest
+    pop r10 ;; Popping RIP into r10
+    ; call unlock_scheduler
+    ; pop cs ;; Popping code segment
+    pop r9 ;; Popping code segment into bogus register for now
+    pop rax ;; Popping rflags ???
+    ; mov rax, cr3
+    ; push rax
+    ; pop rax
+    ; mov cr3, rax
+    pop r9 ;; Popping rsp
+    push r10 ;; Pushing RIP to stack for return
+    ret

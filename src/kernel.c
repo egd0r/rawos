@@ -125,14 +125,14 @@ int kmain(unsigned long mbr_addr) {
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
-    activate_interrupts(); // sti
+    // activate_interrupts(); // sti
     // CLI();
 
     // Saves state on stack and selects a new process to run (sets current_item)
-    // schedule(*((INT_FRAME *)current_item->stack));
+    schedule(current_item->stack);
     // Takes stack of item to switch to and performs context switch with ret
     // -> Examine stack and swaps incase of error
-    // switch_task(current_item->stack);
+    switch_task(current_item->stack);
 
     while (1) {
     //   printf("kernel task");
