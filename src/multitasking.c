@@ -95,40 +95,39 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
 */
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
-    // uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L3 table
-    // uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L2 table
-    // uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L1 table
-    // uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Linking L4 -> L3
-    // l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
-    // // Linking L3 -> L2
-    // l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
-    // // Linking L2 -> L1
-    // l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
+    uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // Allocating new page for L3 table
+    uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // Allocating new page for L2 table
+    uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // Allocating new page for L1 table
+    uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // Linking L4 -> L3
+    l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
+    // Linking L3 -> L2
+    l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
+    // Linking L2 -> L1
+    l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
 
-    // // WAIT FOR SHARED MEMORY FUNCTIONALITY? Just some more paging methods
-    // // Creating entry for IDT virtual address in high memory
+    // WAIT FOR SHARED MEMORY FUNCTIONALITY? Just some more paging methods
+    // Creating entry for IDT virtual address in high memory
 
-    // // Creating entry for GDT virtual address in high memory
+    // Creating entry for GDT virtual address in high memory
 
-    // // Getting L1 PTE of allocated page (masked physical address)
+    // Getting L1 PTE of allocated page (masked physical address)
 
-    // // Get physical address of entry point - this will be hugepaged so get_pagetable_entry needs to be modified
+    // Get physical address of entry point - this will be hugepaged so get_pagetable_entry needs to be modified
 
-    // uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
-    // // Self referencing
-    // l4_pt_virt[510] = l4_pt_phys;
-
+    uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
+    // Self referencing
+    l4_pt_virt[510] = l4_pt_phys;
 
     TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
     
     INT_FRAME new_state = {0};
 
     // Unmasking and setting as CR3 of new process
-    // new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+    new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
 
     new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
     new_task->stack = &((new_task->stack)[STACK_SIZE-1]);

@@ -26,7 +26,6 @@ typedef struct task_item_ll {
     int parent_PID;
     int switches;
     uint8_t *stack;
-    INT_FRAME * state; // This should be pointed to by the stack and not exist as a seperate structure
 	uint64_t *cr3;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
