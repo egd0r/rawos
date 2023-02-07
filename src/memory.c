@@ -15,6 +15,11 @@ void munmap(void *ptr, int size) {
     return;
 }
 
+// void *sbrk(int n) {
+//     int ret = heap_current;
+//     heap_current += n;
+//     return ret;
+// }
 
 /*
     Takes MBR ADDR and returns memory map struct with memory sections
@@ -579,6 +584,7 @@ void *create_new_heap_space() {
         tail_heap.prev=(chunk_n *)(newMemPtr);
         //Placing heap metadata
         *((chunk_n *)newMemPtr) = head_heap;
+        printf("test");
         *((chunk_n *)tailInsertion) = tail_heap;
         //Resetting pointer to final heap tail
         tail_of_last_heapchunk = tailInsertion;

@@ -7,6 +7,7 @@ bits 64 ; in 64 bit mode
 
 long_mode_start:
     ; Load 0
+    lgdt [gdt64.pointer] ; GDT is at address 
     mov ax, 0
     mov ss, ax
     mov ds, ax
@@ -22,6 +23,7 @@ long_mode_start:
 
     ;; Modify page tables inside .bss ; map kernel to 
     ;; 
+    ltr ax
 
     ; Jump into kernel entry here
     cli                           ; Clear the interrupt flag.
@@ -42,6 +44,7 @@ long_mode_start:
     ;; Higher half page tables are now initialised
 
     mov qword rdi, [mbootstruct] ; Passing struct to C function
+    mov qword r9, gdt64
     call qword kmain
 
     hlt
@@ -86,6 +89,9 @@ MapPages:
 section .bss ;; block started by symbol, linker sets bytes to 0
 global stk_top
 global stk_bott
+global page_table_l3
+global page_table_l4
+global page_table_l2
 align 4096
 page_table_l4:
     resb 4096
@@ -108,10 +114,22 @@ global gdtr_pt
 gdt64:
 	dq 0 ; zero entry 
 .code_segment: equ $ - gdt64
-	dq (1 << 43) | (0 << 44) | (1 << 47) | (1 << 53) ; code segment for kernel
+	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53) ; code segment for kernel
+.data_segment: equ $ - gdt64
+    dq (0x92 << 40) | (0xC << 52)
+.user_code_segment: equ $ - gdt64
+    dq (0x9A << 40) | (1 << 53) ;; Access flags and long mode bit set
+.user_data_segment: equ $ - gdt64
+    dq (0xF2 << 40) | (0xC << 52)
+;; Only legacy
+.tss_segment: equ $ - gdt64
+    dq 0
+    dq (1 << 55) | (9 << 40) | (0 << 47)
 .pointer:
 	dw $  - gdt64 - 1 ; length
 	dq gdt64 ; address
+;; TSS descriptor
+
 
 
 gdtr_pt: ;; Pointer to GDT used after long jump
@@ -119,12 +137,13 @@ gdtr_pt: ;; Pointer to GDT used after long jump
     dd 0
 
 
-section .text
+; section .text
 ;; Interrupt jazz
 extern exception_handler
 extern panic
 
 extern test_state
+
 
 ;; Pushing register state to stack to avoid bad things!
 %macro pushreg 0
@@ -134,14 +153,17 @@ push r12
 push r13
 push r14
 push r15
-; mov rax, cr3
-; push rax
+mov rax, cr3
+push rax
 %endmacro
 
 ;; Popping register state from stack
 %macro popreg 0
-; pop rax
-; mov cr3, rax
+pop rax
+mov cr3, r10
+and r10, 0xFFFFF
+or rax, r10
+mov cr3, rax
 pop r15
 pop r14
 pop r13
@@ -150,7 +172,6 @@ pop rbx
 pop rbp
 %endmacro
 
-;; Defining macros for error stubs
 %macro isr_err_stub 1
 isr_stub_%+%1:
     ;; Save registers
@@ -158,38 +179,108 @@ isr_stub_%+%1:
     pushreg
     push qword %1
     ; push qword 0xEE
-    mov rdi, [rsp+0x0D] ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov rdi, rsp ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov rsi, rcx
     call exception_handler
     mov rsp, rax ;; Set new stack
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
     ; call test_state
+    ; mov ax, 3
+    ; mov ds, ax
+	; mov es, ax 
+	; mov fs, ax 
+	; mov gs, ax 
+    iretq
+%endmacro
+; if writing for 64-bit, use iretq instead
+%macro isr_no_err_stub 1
+isr_stub_%+%1:
+    ;; Save registers
+    ;; Move interrupt number into exception handler
+    push qword 0
+    pushreg
+    push qword %1
+    ; push qword 0xEE
+    mov rdi, rsp ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov rsi, rcx
+    call exception_handler
+    mov rsp, rax ;; Set new stack
+    pop rdi ;; Popping vector into rdi will get overwritten
+    popreg
+    pop rax ;; pop fake error into rax
+    ; call test_state
+    ; mov ax, 3
+    ; mov ds, ax
+	; mov es, ax 
+	; mov fs, ax 
+	; mov gs, ax 
     iretq
 %endmacro
 
-%assign i 0 
-%rep    255
-    isr_err_stub i
-%assign i i+1 
-%endrep
+
 
 global isr_stub_table
-
+isr_no_err_stub 0
+isr_no_err_stub 1
+isr_no_err_stub 2
+isr_no_err_stub 3
+isr_no_err_stub 4
+isr_no_err_stub 5
+isr_no_err_stub 6
+isr_no_err_stub 7
+isr_err_stub    8
+isr_no_err_stub 9
+isr_err_stub    10
+isr_err_stub    11
+isr_err_stub    12
+isr_err_stub    13
+isr_err_stub    14
+isr_no_err_stub 15
+isr_no_err_stub 16
+isr_err_stub    17
+isr_no_err_stub 18
+isr_no_err_stub 19
+isr_no_err_stub 20
+isr_no_err_stub 21
+isr_no_err_stub 22
+isr_no_err_stub 23
+isr_no_err_stub 24
+isr_no_err_stub 25
+isr_no_err_stub 26
+isr_no_err_stub 27
+isr_no_err_stub 28
+isr_no_err_stub 29
+isr_err_stub    30
+isr_no_err_stub 31
+%assign i 32
+%rep    223
+    isr_no_err_stub i
+%assign i i+1
+%endrep
 ;; Defining tables with stubs
 isr_stub_table:
+global isr_stub_table
+isr_stub_table:
 %assign i 0 
-%rep    255
+%rep    255 
     dq isr_stub_%+i
 %assign i i+1 
 %endrep
 
+
 extern lock_scheduler
 extern unlock_scheduler
 global switch_task
+global load_user_segment
+global load_kernel_segment
 
 ;; For sleep: save state in current -> add to blocked -> switch to next task
 ;; Assumes state has been saved
 ;; Input: rdi -> stack pointer holding INT_FRAME of state
+
+;; Not sure this will work bcos stack frames...
+;; When state is restored in interrupt? ?? ? ?? ? ?
 switch_task:
     ; call lock_scheduler
     mov rsp, rdi
@@ -206,4 +297,30 @@ switch_task:
     ; mov cr3, rax
     pop r9 ;; Popping rsp
     push r10 ;; Pushing RIP to stack for return
+    ret
+
+
+load_user_segment:
+    mov ax, 0x10
+    mov ds, ax
+
+    ret
+
+load_kernel_segment:
+    mov ax, 0x20
+    mov ds, dx
+
+    ret
+
+global flush_tlb
+flush_tlb:
+    mov rax, cr3
+    mov cr3, rax
+
+    ret
+
+global load_cr3
+load_cr3:
+    mov cr3, rdi
+
     ret

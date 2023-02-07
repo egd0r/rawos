@@ -1,12 +1,14 @@
 #include "headers/interrupts.h"
 #include "headers/multitasking.h"
 #include "headers/vga.h" // For prints
+#include "headers/paging.h"
+#include "headers/memory.h"
 // #include "headers/syscalls.h"
 
 static idtr_t idtr;
 
 __attribute__((aligned(0x10))) 
-static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for performance
+static idt_entry_t idt[256] __attribute__((section(".rodata"))); // Create an array of IDT entries; aligned for performance
 
 
 /*
@@ -43,18 +45,67 @@ void print_reg_state(INT_FRAME frame) {
 	print_reg("RIP", frame.rip);
 	print_reg("CS ", frame.cs);
 }
-                  
+
+extern load_kernel_segment();
+extern load_user_segment();
+extern void load_cr3(uint64_t pt);
 void * task_switch_int(INT_FRAME *frame) {
 	// Pass to scheduler, get new context
 	TASK_LL *new_task = schedule(frame);
 	if (new_task == NULL) return frame;
 
+	if (new_task->PID == 0) {
+		// load_kernel_segment();
+	} else {
+		// load_user_segment();
+	}
+
+	// load_cr3(new_task->cr3);
+
 	return new_task->stack;
 }
 
+extern void flush_tlb();
+// Allocates a physical page at virt_addr
+void allocate_here(uint64_t virt_addr) {
+	virt_addr >>= 12;
+	int l1_index = virt_addr & 0x1FF;
+	int l2_index = (virt_addr >> 9) & 0x1FF;
+	virt_addr >>= 9;
+	int l3_index = (virt_addr >> 9) & 0x1FF;
+	virt_addr >>= 9;
+	int l4_index = (virt_addr >> 9) & 0x1FF;
+	
+    uint64_t *page_ptr = PAGE_DIR_VIRT; //Used for indexing P4 directly
+
+	if ((page_ptr[l4_index] & PRESENT) == 0) {
+		page_ptr[l4_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+	}
+
+    page_ptr = ((((uint64_t)page_ptr << 9) | l4_index << 12) & PT_LVL3) | ((uint64_t)page_ptr & ~PT_LVL3);
+
+	if ((page_ptr[l3_index] & PRESENT) == 0) {
+		page_ptr[l3_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+	}
+
+	page_ptr = ((((uint64_t)page_ptr << 9) | l3_index << 12) & PT_LVL2) | ((uint64_t)page_ptr & ~PT_LVL2);
+	
+	if ((page_ptr[l2_index] & PRESENT) == 0) {
+		page_ptr[l2_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+	}
+
+	page_ptr = ((((uint64_t)page_ptr << 9) | l2_index << 12) & PT_LVL1) | ((uint64_t)page_ptr & ~PT_LVL1);
+
+	if ((page_ptr[l1_index] & PRESENT) != 0) printf("error");
+	else page_ptr[l1_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+
+	flush_tlb();
+}
+
+
 //Interrupt handlers
 int counter = 0;
-void * exception_handler(INT_FRAME frame) {
+void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
 	void *ret = &frame;
@@ -73,6 +124,19 @@ void * exception_handler(INT_FRAME frame) {
 		printf("General protection fault -_-\n");
 		print_reg_state(frame);
 		__asm__ volatile ("hlt");
+	} else if (frame.vector == 0x0E) {
+		if (arg > heap_current || arg < heap_start) return;
+		printf("Page fault");
+		// __asm__ volatile ("hlt");
+		/*
+			Pre-reqs for interrupt based physical memory allocation:
+			-> Add kernel structs to specific page and copy on create
+			-> 
+		*/
+
+		allocate_here(arg);
+
+		// Memory access is re-run
 	} else if (frame.vector == 0x80) {
 		// syscall_handler(&frame);
 	} else {
@@ -151,13 +215,12 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
 
 }
 
-
 extern void *isr_stub_table[];
 void idt_init() {
 	idtr.base = (uint64_t)&idt[0];
 	idtr.limit = (uint16_t)sizeof(idt_entry_t) * 255 - 1;
 
-	for (int i=0; i<33; i++) {
+	for (int i=0; i<256; i++) {
 		idt_set_descriptor(i, isr_stub_table[i], IDT_TA_InterruptGate);
 	}
 

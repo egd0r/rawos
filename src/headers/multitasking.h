@@ -26,12 +26,9 @@ typedef struct task_item_ll {
     int parent_PID;
     int switches;
     uint8_t *stack;
-	uint64_t *cr3;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;
-
-extern TASK_LL *current_item; // Making current item global for TESTING purposes 
 
 // For organisation of chunks of tasks if needed
 typedef struct task_item_group {
@@ -55,3 +52,6 @@ TASK_LL * find_prev_task(int pid);
 #define TASK(pid) find_prev_task(pid)->next
 
 
+extern TASK_LL *current_item; // Making current item global for TESTING purposes 
+extern uint8_t *heap_start; // HERE FOR TESTING PURPOSES, should be per process
+extern uint8_t *heap_current; // HERE FOR TESTING PURPOSES, should be per process

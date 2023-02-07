@@ -31,6 +31,8 @@ SECTIONS
    {
        _bss = .;
        *(.bss*)
+       . = ALIGN(4096);
+       RODATA_START = .;
         *(.rodata*)
 
        /*

@@ -12,6 +12,9 @@ TASK_LL *current_item = NULL;
 
 TASK_LL *terminated_curr = NULL;
 
+uint8_t *heap_start = 0x0005000000;
+uint8_t *heap_current;
+
 int PID_COUNTER = 0;
 int irq_disables = 0;
 
@@ -93,6 +96,7 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
     Kernel entry will create init process as first process with same state
     Places new task at end of queue
 */
+extern uint64_t page_table_l3; // Kernel data
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
     uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
@@ -122,27 +126,36 @@ int create_task(void *entry_point) {
     // Self referencing
     l4_pt_virt[510] = l4_pt_phys;
 
+    // Mapping kernel structures
+    l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF;
+    
+
+
+
     TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
     
     INT_FRAME new_state = {0};
 
-    // Unmasking and setting as CR3 of new process
-    new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
 
     new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
+    //Pointing stack to end
     new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
 
 
     // FILL VALUES
-    new_task->PID = PID_COUNTER++;
+    if (entry_point == 0x00) new_task->PID = 0;
+    else new_task->PID = PID_COUNTER++;
     new_task->switches = 0;
 
+    // Unmasking and setting as CR3 of new process
+    new_state.cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
     new_state.vector = 0x20;
     new_state.rip = (uint64_t)entry_point;
     new_state.eflags = 0x202;
 
     // This code selector is what can take processor into ring 3
-    new_state.cs = 0x08;
+    if (entry_point == 0x00) new_state.cs = 0x08;
+    else new_state.cs = 0x08; // Test without changing CS
     new_state.rsp = new_task->stack; //
     new_state.rbp = 0;
 
@@ -164,8 +177,6 @@ int create_task(void *entry_point) {
         ready_end->next = new_task;
         ready_end = ready_end->next;
     }
-
-    // new_task->stack ; // Point to end
 
     printf("Created a new task with PID %d\n", new_task->PID);    
 

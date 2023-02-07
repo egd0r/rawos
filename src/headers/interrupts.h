@@ -47,21 +47,22 @@ typedef struct {
 
 typedef struct {
 	uint64_t vector;
-	// uint64_t cr3
+	uint64_t cr3;
 	uint64_t r15;
 	uint64_t r14;
 	uint64_t r13;
 	uint64_t r12;
 	uint64_t rbx;
 	uint64_t rbp;
+	uint64_t err;
 	uint64_t rip;
 	uint64_t cs;
 	uint64_t eflags;
 	uint64_t rsp;
-} INT_FRAME;
+} __attribute__((packed)) INT_FRAME;
 
 //Need to make available for assembly routines
-void * exception_handler(INT_FRAME frame);
+void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg);
 void panic(INT_FRAME frame);
 // void pagefault_handler();
 // void doublefault_handler();

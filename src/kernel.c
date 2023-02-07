@@ -51,7 +51,18 @@ void taskC() {
         - InitRD which is loaded through GRUB, containing user processes - WCS don't need this can start all in kmain
 
 */
+
+extern char RODATA_START;
+
+extern uint64_t page_table_l2;
+extern uint64_t page_table_l3;
+extern uint64_t page_table_l4;
+
+extern uint64_t stk_top;
+extern uint64_t stk_bottom;
+
 int kmain(unsigned long mbr_addr) {
+    heap_current = heap_start;
     // Initialise IDT
     asm __volatile__("mov %rsp, [stk_top]"); // Recreating stack in kmain
 
@@ -89,9 +100,12 @@ int kmain(unsigned long mbr_addr) {
     // uint64_t *sbrk_eg = sbrk(0);
 
     int *arr = new_malloc(sizeof(int)*5);
+    arr[1] = 5;
+
     uint64_t main_cr3 = (uint64_t)get_pagetable_entry(0xffffff7fbfdfe000) & ~0xFFF;
     uint64_t taskA_phys = (uint64_t)get_pagetable_entry(&taskA);
 
+    print_reg("RODATA", &RODATA_START);
     print_reg("L4 physical", main_cr3);
     print_reg("TA physical", taskA_phys);
 
@@ -125,14 +139,14 @@ int kmain(unsigned long mbr_addr) {
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
-    // activate_interrupts(); // sti
+    activate_interrupts(); // sti
     // CLI();
 
     // Saves state on stack and selects a new process to run (sets current_item)
-    schedule(current_item->stack);
+    // schedule(current_item->stack);
     // Takes stack of item to switch to and performs context switch with ret
     // -> Examine stack and swaps incase of error
-    switch_task(current_item->stack);
+    // switch_task(current_item->stack);
 
     while (1) {
     //   printf("kernel task");
