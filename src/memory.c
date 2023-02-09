@@ -15,11 +15,11 @@ void munmap(void *ptr, int size) {
     return;
 }
 
-// void *sbrk(int n) {
-//     int ret = heap_current;
-//     heap_current += n;
-//     return ret;
-// }
+void *sbrk(int n) {
+    int ret = heap_current;
+    heap_current += n;
+    return ret;
+}
 
 /*
     Takes MBR ADDR and returns memory map struct with memory sections
@@ -530,38 +530,38 @@ void *create_new_heap_space() {
     //Condition checks whether new heap is adjecent in memory to previous heap created
     //Allows coalescing of heap spaces
     void *prev = sbrk(0);
-    if (next_chunk(tail_of_last_heapchunk) == prev && prev != BAD_PTR) {
-        printf("\tNew heap chunk is adjecent to the last one\n"); 
-        //Creating new tail to place at end of new heap
-        chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL, .prev=tail_of_last_heapchunk->prev };
-        //Creating new free chunk to be placed within memory, supplying it with the entire size of
-        //  the new heap, excluding the tail metadata
-        chunk_n newFreeChunk = { .prev_size=tail_of_last_heapchunk->prev_size, .size=DEFAULT_BYTES-sizeof(tail_heap), .next=NULL, .prev=NULL };
+    // if (next_chunk(tail_of_last_heapchunk) == prev && prev != BAD_PTR) {
+    //     printf("\tNew heap chunk is adjecent to the last one\n"); 
+    //     //Creating new tail to place at end of new heap
+    //     chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL, .prev=tail_of_last_heapchunk->prev };
+    //     //Creating new free chunk to be placed within memory, supplying it with the entire size of
+    //     //  the new heap, excluding the tail metadata
+    //     chunk_n newFreeChunk = { .prev_size=tail_of_last_heapchunk->prev_size, .size=DEFAULT_BYTES-sizeof(tail_heap), .next=NULL, .prev=NULL };
         
-        //Calling sbrk to advance the heap pointer by the default amount
-        void *newMemPtr = sbrk(DEFAULT_BYTES);
+    //     //Calling sbrk to advance the heap pointer by the default amount
+    //     void *newMemPtr = sbrk(DEFAULT_BYTES);
 
-        //Placing tail at end of heap space
-        void *tailInsertion = newMemPtr+(DEFAULT_BYTES-sizeof(tail_heap));
-        *((chunk_n *)tailInsertion) = tail_heap;
+    //     //Placing tail at end of heap space
+    //     void *tailInsertion = newMemPtr+(DEFAULT_BYTES-sizeof(tail_heap));
+    //     *((chunk_n *)tailInsertion) = tail_heap;
 
-        //Overwriting previous chunk metadata with new free chunk as this chunk is no longer needed
-        //The new free chunk is now placed next to the last (modifiable) chunk in the previous heap
-        *tail_of_last_heapchunk = newFreeChunk;
+    //     //Overwriting previous chunk metadata with new free chunk as this chunk is no longer needed
+    //     //The new free chunk is now placed next to the last (modifiable) chunk in the previous heap
+    //     *tail_of_last_heapchunk = newFreeChunk;
 
-        //Attempting to combine final chunk of previous heap with new free, to create larger free space
-        chunk_n *ret = combine(prev_chunk(tail_of_last_heapchunk), tail_of_last_heapchunk);
+    //     //Attempting to combine final chunk of previous heap with new free, to create larger free space
+    //     chunk_n *ret = combine(prev_chunk(tail_of_last_heapchunk), tail_of_last_heapchunk);
         
-        //Condition checks if combine was impossible, if so, set the returning variable to starting address
-        //of new free space (which is currently identical to where the tail used to be
-        if (!ret) ret = tail_of_last_heapchunk;
+    //     //Condition checks if combine was impossible, if so, set the returning variable to starting address
+    //     //of new free space (which is currently identical to where the tail used to be
+    //     if (!ret) ret = tail_of_last_heapchunk;
 
-        //Resetting the variable which points to the final heap tail
-        tail_of_last_heapchunk = tailInsertion;
+    //     //Resetting the variable which points to the final heap tail
+    //     tail_of_last_heapchunk = tailInsertion;
 
-        //Returning free chunk ready to be split by new_malloc
-        return ret;
-    } else { //Heap spaces are not adjecent
+    //     //Returning free chunk ready to be split by new_malloc
+    //     return ret;
+    // } else { //Heap spaces are not adjecent
         //Creating heap metadata
         // chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
         chunk_n tail_heap;
@@ -597,7 +597,7 @@ void *create_new_heap_space() {
 
         //Returning free chunk ready to be split by new_malloc
         return newMemPtr;
-    }
+    // }
 }
 
 //Allocates a space of size "bytes" and returns a pointer to the start of the chunk

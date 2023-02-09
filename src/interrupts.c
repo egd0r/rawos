@@ -104,6 +104,7 @@ void allocate_here(uint64_t virt_addr) {
 
 
 //Interrupt handlers
+extern void syscall_stub();
 int counter = 0;
 void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
@@ -125,8 +126,8 @@ void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 		print_reg_state(frame);
 		__asm__ volatile ("hlt");
 	} else if (frame.vector == 0x0E) {
-		if (arg > heap_current || arg < heap_start) return;
-		printf("Page fault");
+		// if (arg > heap_current || arg < heap_start) return;
+		// printf("Page fault");
 		// __asm__ volatile ("hlt");
 		/*
 			Pre-reqs for interrupt based physical memory allocation:
@@ -138,7 +139,7 @@ void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 
 		// Memory access is re-run
 	} else if (frame.vector == 0x80) {
-		// syscall_handler(&frame);
+		syscall_handler(frame);
 	} else {
 		cls();
 		printf("Interrupted %d\n", frame.vector);

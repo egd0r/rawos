@@ -41,6 +41,8 @@ long_mode_start:
     call MapPages
     mov dword [0xb8000], 0x2f6b2f4f
 
+    ;; Configuring syscall MSRs
+
     ;; Higher half page tables are now initialised
 
     mov qword rdi, [mbootstruct] ; Passing struct to C function
@@ -149,25 +151,28 @@ extern test_state
 %macro pushreg 0
 push rbp
 push rbx
+push rdx
+push rcx
+push rax
 push r12
 push r13
 push r14
 push r15
-mov rax, cr3
-push rax
+mov r10, cr3
+push r10
 %endmacro
 
 ;; Popping register state from stack
 %macro popreg 0
-pop rax
-mov cr3, r10
-and r10, 0xFFFFF
-or rax, r10
-mov cr3, rax
+pop r10 ;; Popping cr3
+mov cr3, r10 ;; Loading process address space
 pop r15
 pop r14
 pop r13
 pop r12
+pop rax
+pop rcx
+pop rdx
 pop rbx
 pop rbp
 %endmacro
@@ -178,13 +183,13 @@ isr_stub_%+%1:
     ;; Move interrupt number into exception handler
     pushreg
     push qword %1
-    ; push qword 0xEE
     mov rdi, rsp ;; Load address of stack + 7 for start of struct + 4 for OG
-    mov rsi, rcx
+    mov rsi, cr2 ;; For PFs
     call exception_handler
     mov rsp, rax ;; Set new stack
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
+    pop r9 ;; Popping error code
     ; call test_state
     ; mov ax, 3
     ; mov ds, ax
@@ -198,7 +203,7 @@ isr_stub_%+%1:
 isr_stub_%+%1:
     ;; Save registers
     ;; Move interrupt number into exception handler
-    push qword 0
+    push qword 0xFFFF
     pushreg
     push qword %1
     ; push qword 0xEE
@@ -208,7 +213,7 @@ isr_stub_%+%1:
     mov rsp, rax ;; Set new stack
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
-    pop rax ;; pop fake error into rax
+    pop r9 ;; pop fake error into rax
     ; call test_state
     ; mov ax, 3
     ; mov ds, ax
@@ -253,14 +258,13 @@ isr_no_err_stub 28
 isr_no_err_stub 29
 isr_err_stub    30
 isr_no_err_stub 31
-%assign i 32
-%rep    223
+isr_no_err_stub 32
+%assign i 33
+%rep    222
     isr_no_err_stub i
 %assign i i+1
 %endrep
 ;; Defining tables with stubs
-isr_stub_table:
-global isr_stub_table
 isr_stub_table:
 %assign i 0 
 %rep    255 
@@ -323,4 +327,12 @@ global load_cr3
 load_cr3:
     mov cr3, rdi
 
+    ret
+
+section .text
+global syscal_test
+syscal_test:
+    mov rax, rdi
+    mov rbx, rsi
+    int 0x80
     ret

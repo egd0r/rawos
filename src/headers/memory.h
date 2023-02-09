@@ -29,8 +29,8 @@ extern uint64_t KERNEL_END;
 struct multiboot_tag_mmap *init_memory_map(void *mbr_addr);
 
 #define KALLOC_PHYS() kalloc_physical(1)
-#define sbrk(n) page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n % PHYSICAL_PAGE_SIZE == 0 ? n/PHYSICAL_PAGE_SIZE : n/PHYSICAL_PAGE_SIZE + 1) | KERNEL_OFFSET
-// void *sbrk(int n);
+// #define sbrk(n) page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n % PHYSICAL_PAGE_SIZE == 0 ? n/PHYSICAL_PAGE_SIZE : n/PHYSICAL_PAGE_SIZE + 1) | KERNEL_OFFSET
+void *sbrk(int n);
 
 void * kalloc_physical(size_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
 void kfree_physical(void *ptr);

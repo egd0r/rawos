@@ -16,6 +16,7 @@ kernel:
 	gcc $(CFLAGS) -c $(SRCPATH)/memory.c -o $(OBJPATH)/memory.o
 	gcc $(CFLAGS) -c $(SRCPATH)/multitasking.c -o $(OBJPATH)/multitasking.o
 	gcc $(CFLAGS) -c $(SRCPATH)/gdt.c -o $(OBJPATH)/gdt.o
+	gcc $(CFLAGS) -c $(SRCPATH)/syscalls.c -o $(OBJPATH)/syscalls.o
 
 	ld --no-relax -n -o kernel.bin -T linker.ld obj/*.o
 	cp kernel.bin boot/kernel.bin

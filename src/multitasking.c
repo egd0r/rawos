@@ -92,6 +92,36 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
     return to_remove;
 }
 
+extern uint64_t page_table_l4; // Kernel data
+// Loading state into new address space
+uint8_t * place_state(void * cr3, void * entry_point) {
+    if (entry_point != 0x00)
+        load_cr3(cr3);
+
+    INT_FRAME new_state;
+    uint8_t *stack_pos = 0x80000fff;
+
+    stack_pos -= sizeof(INT_FRAME);
+    new_state.cr3 = cr3;
+    new_state.vector = 0x20;
+    new_state.rip = (uint64_t)entry_point;
+    new_state.eflags = 0x202;
+
+    new_state.r15 = 0x69;
+
+    // This code selector is what can take processor into ring 3
+    new_state.cs = 0x08;
+    new_state.rsp = 0x80000fff; //
+    new_state.rbp = 0;
+
+    *((INT_FRAME *)stack_pos) = new_state;
+
+    if (entry_point != 0x00)
+        load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
+
+    return stack_pos;
+}
+
 /*
     Kernel entry will create init process as first process with same state
     Places new task at end of queue
@@ -100,18 +130,18 @@ extern uint64_t page_table_l3; // Kernel data
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
     uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L3 table
-    uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L2 table
-    uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Allocating new page for L1 table
-    uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // Linking L4 -> L3
-    l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
-    // Linking L3 -> L2
-    l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
-    // Linking L2 -> L1
-    l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
+    // // Allocating new page for L3 table
+    // uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Allocating new page for L2 table
+    // uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Allocating new page for L1 table
+    // uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    // // Linking L4 -> L3
+    // l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
+    // // Linking L3 -> L2
+    // l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
+    // // Linking L2 -> L1
+    // l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
 
     // WAIT FOR SHARED MEMORY FUNCTIONALITY? Just some more paging methods
     // Creating entry for IDT virtual address in high memory
@@ -127,19 +157,19 @@ int create_task(void *entry_point) {
     l4_pt_virt[510] = l4_pt_phys;
 
     // Mapping kernel structures
-    l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF;
-    
-
-
+    l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF | PRESENT | RW;
 
     TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
     
     INT_FRAME new_state = {0};
 
 
-    new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
+    // new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
     //Pointing stack to end
-    new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
+    // new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
+    new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+
+    new_task->stack = place_state(new_task->cr3, entry_point);
 
 
     // FILL VALUES
@@ -147,20 +177,23 @@ int create_task(void *entry_point) {
     else new_task->PID = PID_COUNTER++;
     new_task->switches = 0;
 
-    // Unmasking and setting as CR3 of new process
-    new_state.cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
-    new_state.vector = 0x20;
-    new_state.rip = (uint64_t)entry_point;
-    new_state.eflags = 0x202;
+    // // Unmasking and setting as CR3 of new process
+    // new_state.cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+    // new_state.vector = 0x20;
+    // new_state.rip = (uint64_t)entry_point;
+    // new_state.eflags = 0x202;
 
-    // This code selector is what can take processor into ring 3
-    if (entry_point == 0x00) new_state.cs = 0x08;
-    else new_state.cs = 0x08; // Test without changing CS
-    new_state.rsp = new_task->stack; //
-    new_state.rbp = 0;
+    // new_state.r15 = 0x69;
 
-    new_task->stack -= sizeof(INT_FRAME);
-    *((INT_FRAME *)new_task->stack) = new_state;
+    // // This code selector is what can take processor into ring 3
+    // if (entry_point == 0x00) new_state.cs = 0x08;
+    // else new_state.cs = 0x08; // Test without changing CS
+    // new_state.rsp = new_task->stack; //
+    // new_state.rbp = 0;
+
+    // new_task->stack -= sizeof(INT_FRAME);
+    // *((INT_FRAME *)new_task->stack) = new_state;
+
 
     new_task->next = new_task;
     new_task->prev = new_task;

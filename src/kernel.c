@@ -52,14 +52,8 @@ void taskC() {
 
 */
 
-extern char RODATA_START;
-
-extern uint64_t page_table_l2;
-extern uint64_t page_table_l3;
-extern uint64_t page_table_l4;
-
-extern uint64_t stk_top;
-extern uint64_t stk_bottom;
+extern uint64_t RODATA_START;
+extern void syscal_test(int syscall_num);
 
 int kmain(unsigned long mbr_addr) {
     heap_current = heap_start;
@@ -74,6 +68,7 @@ int kmain(unsigned long mbr_addr) {
     memset(BITMAP_VIRTUAL, ~0, 0x10000); //Sets bitmap to entirely allocated
     struct multiboot_tag_mmap *ret = init_memory_map(mbr_addr);
 
+    syscal_test(42);
     // Allocate at 0
     uint64_t ptr = kalloc_physical(1);
     ptr = kalloc_physical(1);
@@ -109,7 +104,7 @@ int kmain(unsigned long mbr_addr) {
     print_reg("L4 physical", main_cr3);
     print_reg("TA physical", taskA_phys);
 
-    get_virt_test_i();
+    // get_virt_test_i();
 
 
     // for (int i=0; i<5; i++) {
