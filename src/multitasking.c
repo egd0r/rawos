@@ -173,8 +173,13 @@ int create_task(void *entry_point) {
 
 
     // FILL VALUES
-    if (entry_point == 0x00) new_task->PID = 0;
-    else new_task->PID = PID_COUNTER++;
+    if (entry_point == 0x00) {
+        new_task->PID = 0;
+        new_task->heap_current = heap_current;
+    } else { 
+        new_task->PID = PID_COUNTER++;
+        new_task->heap_current = HEAP_START;
+    }
     new_task->switches = 0;
 
     // // Unmasking and setting as CR3 of new process
@@ -258,7 +263,7 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     if (ready_start == NULL)
         return NULL;
 
-
+    current_item->heap_current = heap_current;
     // *(current_item->state) = *curr_proc_state; // Temp
 
     // This context is saved automatically
@@ -273,6 +278,8 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     current_item = ready_start;
     current_item->task_state = RUNNING;
     ready_start = ready_start->next; // Progress ready_start
+
+    heap_current = current_item->heap_current;
 
     return current_item;
 }

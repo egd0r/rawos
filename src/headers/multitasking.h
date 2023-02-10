@@ -5,6 +5,7 @@
 
 #include "interrupts.h"
 
+#define HEAP_START 0x5000000
 #define STACK_SIZE 4096
 #define ONE_OVER_TWO 0x80000000000000000000
 
@@ -26,6 +27,7 @@ typedef struct task_item_ll {
     int parent_PID;
     int switches;
     uint8_t *stack;
+	uint8_t *heap_current;
 	uint64_t cr3;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;

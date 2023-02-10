@@ -19,6 +19,8 @@ void taskA() {
     // for (int i=0; i<100; i++) {
     //     i--;
     // }
+    int *x = (int *)new_malloc(sizeof(int)*3);
+    x[0] = 5;
     while (1)
         printf("A");
 }
@@ -130,7 +132,7 @@ int kmain(unsigned long mbr_addr) {
 
     // CAUSES 0x06 and TRIPLE FAULT OCCAISONALLY?
     // create_task(HERE);
-    create_task(0x00); // Init task - can move this to init_multitasking or something?
+    create_task(0x00);
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
