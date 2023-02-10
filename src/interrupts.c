@@ -49,7 +49,8 @@ void print_reg_state(INT_FRAME frame) {
 extern load_kernel_segment();
 extern load_user_segment();
 extern void load_cr3(uint64_t pt);
-void * task_switch_int(INT_FRAME *frame) {
+extern void load_cr3_test(uint64_t pt);
+TASK_LL * task_switch_int(INT_FRAME *frame) {
 	// Pass to scheduler, get new context
 	TASK_LL *new_task = schedule(frame);
 	if (new_task == NULL) return frame;
@@ -62,7 +63,7 @@ void * task_switch_int(INT_FRAME *frame) {
 
 	// load_cr3(new_task->cr3);
 
-	return new_task->stack;
+	return new_task;
 }
 
 extern void flush_tlb();
@@ -102,15 +103,17 @@ void allocate_here(uint64_t virt_addr) {
 	flush_tlb();
 }
 
-
 //Interrupt handlers
 extern void syscall_stub();
 int counter = 0;
-void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
+extern uint64_t page_table_l4; // Kernel data
+void * exception_handler(INT_FRAME * frame, uint64_t arg) {
+	// Switching to interrupt stack
+
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
-	void *ret = &frame;
-	if (frame.vector >= 0x20 && frame.vector < 0x30) {
+	void *ret = frame;
+	if (frame->vector >= 0x20 && frame->vector < 0x30) {
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
 		ms_since_boot += time_between_irq_ms;
@@ -118,14 +121,21 @@ void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 		if (frac_ms_since_boot > temp) ms_since_boot++; // Overflow
 		frac_ms_since_boot += temp;
 
-		ret = task_switch_int(&frame);
+		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
+			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
 
-		picEOI(frame.vector-PIC1_OFFSET);
-	} else if (frame.vector == 0x0D) {
+		TASK_LL *new_task = task_switch_int(frame);
+
+		picEOI(frame->vector-PIC1_OFFSET);
+
+		ret = (void *)(new_task->stack);
+
+		load_cr3(new_task->cr3); // Changing to new process address space where stack is defined
+	} else if (frame->vector == 0x0D) {
 		printf("General protection fault -_-\n");
-		print_reg_state(frame);
+		print_reg_state(*frame);
 		__asm__ volatile ("hlt");
-	} else if (frame.vector == 0x0E) {
+	} else if (frame->vector == 0x0E) {
 		// if (arg > heap_current || arg < heap_start) return;
 		// printf("Page fault");
 		// __asm__ volatile ("hlt");
@@ -138,12 +148,12 @@ void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg) {
 		allocate_here(arg);
 
 		// Memory access is re-run
-	} else if (frame.vector == 0x80) {
-		syscall_handler(frame);
+	} else if (frame->vector == 0x80) {
+		syscall_handler(*frame);
 	} else {
 		cls();
-		printf("Interrupted %d\n", frame.vector);
-		print_reg_state(frame);
+		printf("Interrupted %d\n", frame->vector);
+		print_reg_state(*frame);
 		__asm__ volatile ("hlt");
 	}
 

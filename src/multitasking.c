@@ -15,7 +15,7 @@ TASK_LL *terminated_curr = NULL;
 uint8_t *heap_start = 0x0005000000;
 uint8_t *heap_current;
 
-int PID_COUNTER = 0;
+int PID_COUNTER = 1;
 int irq_disables = 0;
 
 void lock_scheduler() {
@@ -98,8 +98,8 @@ uint8_t * place_state(void * cr3, void * entry_point) {
     if (entry_point != 0x00)
         load_cr3(cr3);
 
-    INT_FRAME new_state;
-    uint8_t *stack_pos = 0x80000fff;
+    INT_FRAME new_state = {0};
+    uint8_t *stack_pos = 0x80000ff0;
 
     stack_pos -= sizeof(INT_FRAME);
     new_state.cr3 = cr3;
@@ -111,7 +111,7 @@ uint8_t * place_state(void * cr3, void * entry_point) {
 
     // This code selector is what can take processor into ring 3
     new_state.cs = 0x08;
-    new_state.rsp = 0x80000fff; //
+    new_state.rsp = 0x80000ff0; //
     new_state.rbp = 0;
 
     *((INT_FRAME *)stack_pos) = new_state;

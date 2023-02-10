@@ -107,6 +107,10 @@ stk_bott:
     resb 4096 * 16 ;; 32 * 4k = 128k
 stk_top:
 
+interrupt_stack_bott:
+    resb 4096
+interrupt_stack_top:
+
 
 ;; Global descriptor table
 ;; 
@@ -183,7 +187,10 @@ isr_stub_%+%1:
     ;; Move interrupt number into exception handler
     pushreg
     push qword %1
-    mov rdi, rsp ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov r10, rsp
+    ;; Switching to interrupt stack
+    mov rsp, interrupt_stack_top
+    mov rdi, r10 ;; Load address of stack + 7 for start of struct + 4 for OG
     mov rsi, cr2 ;; For PFs
     call exception_handler
     mov rsp, rax ;; Set new stack
@@ -206,8 +213,10 @@ isr_stub_%+%1:
     push qword 0xFFFF
     pushreg
     push qword %1
-    ; push qword 0xEE
-    mov rdi, rsp ;; Load address of stack + 7 for start of struct + 4 for OG
+    mov r10, rsp
+    ;; Switching to interrupt stack
+    mov rsp, interrupt_stack_top
+    mov rdi, r10 ;; Load address of stack + 7 for start of struct + 4 for OG
     mov rsi, rcx
     call exception_handler
     mov rsp, rax ;; Set new stack
@@ -329,6 +338,13 @@ load_cr3:
 
     ret
 
+global load_cr3_test
+load_cr3_test:
+    mov cr3, rdi
+    hlt
+
+    ret
+    
 section .text
 global syscal_test
 syscal_test:

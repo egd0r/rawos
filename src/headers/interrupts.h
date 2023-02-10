@@ -65,7 +65,7 @@ typedef struct {
 } __attribute__((packed)) INT_FRAME;
 
 //Need to make available for assembly routines
-void * exception_handler(uint64_t filler, INT_FRAME frame, uint64_t arg);
+void * exception_handler(INT_FRAME * frame, uint64_t arg);
 void panic(INT_FRAME frame);
 // void pagefault_handler();
 // void doublefault_handler();
