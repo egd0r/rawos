@@ -278,6 +278,69 @@ void set_pit_freq(uint16_t reload_count) {
 	STI();
 }
 
+#include "headers/ata.h"
+
+void detect(uint16_t port, int master) {
+    // Indentifying drive
+
+    // Trying to talk to master
+	outb(port+6, master == 1 ? 0xA0 : 0xB0);
+	outb(port+0x206, 0);
+
+	outb(port+6, 0xA0);
+
+	uint8_t status = inb(port+7);
+	if (status == 0xFF) {
+		printf("No device\n");
+		return;
+	}
+
+	outb(port+6, master == 1 ? 0xA0 : 0xB0);
+
+	// Sector count port
+	outb(port+2, 0);
+
+	//lba low
+	outb(port+3, 0);
+	//lba mid
+	outb(port+4, 0);
+	//lba hi
+	outb(port+5, 0); 	
+
+	//command
+	outb(port+7, 0xEC);
+
+	status = inb(port+7);
+	if (status == 0x00) {
+		printf("No device\n");
+		return;
+	}
+
+
+	// Wait until device is ready
+	while(((status & 0x80) == 0x80)
+			&& ((status & 0x01) != 0x01))
+			status = inb(port+7);
+
+
+	if (status & 0x01) {
+		printf("ERROR %d\n", status);
+		return;
+	}
+
+	// data is ready to read
+
+	for (uint16_t i=0; i<256; i++) {
+		uint16_t data = inb(port);
+		char *foo = "  \0";
+		foo[1] = (data >> 8) & 0x00FF;
+		foo[2] = (data & 0x00FF);
+		printf(foo);
+	}
+
+}
+
+
 /*
 	Port to comms on and value to send
 */

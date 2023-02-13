@@ -8,6 +8,7 @@ void printf (const char *format, ...);
 #include "headers/paging.h"
 #include "headers/memory.h"
 #include "headers/multitasking.h"
+#include "headers/ata.h"
 
 /*
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
@@ -71,6 +72,16 @@ int kmain(unsigned long mbr_addr) {
     struct multiboot_tag_mmap *ret = init_memory_map(mbr_addr);
 
     syscal_test(42);
+
+    detect(0x1F0, 1);
+    detect(0x1F0, 0);
+
+    detect(0x1F1, 1);
+    detect(0x1F1, 0);
+
+    detect(0x170, 1);
+    detect(0x170, 0);
+
     // Allocate at 0
     uint64_t ptr = kalloc_physical(1);
     ptr = kalloc_physical(1);

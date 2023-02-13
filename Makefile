@@ -24,9 +24,9 @@ kernel:
 	grub-mkrescue /usr/lib/grub/i386-pc -o kernel.iso . 
 
 ifeq ($(a),)
-	qemu-system-x86_64 -cdrom kernel.iso
+	qemu-system-x86_64 -cdrom kernel.iso -machine pc
 else
-	qemu-system-x86_64 -s -S -cdrom kernel.iso
+	qemu-system-x86_64 -s -S -cdrom kernel.iso 
 endif
 
 	# For debugging:
