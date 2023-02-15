@@ -1,4 +1,4 @@
-#include "headers/gdt.h"
+#include <gdt.h>
 
 const GDT_ENTRY gdt_[6] __attribute__((section(".rodata")));
 

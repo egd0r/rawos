@@ -1,6 +1,5 @@
-#include "../headers/ata.h"
-#include "../headers/vga.h"
-#include ""
+#include <ata.h>
+#include <vga.h>
 
 
 void detect(uint16_t port) {

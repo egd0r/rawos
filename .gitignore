@@ -1,4 +1,5 @@
 *.iso
 *.bin
+*.tar
 obj/*
 vscode/*

@@ -1,9 +1,9 @@
-#include "headers/interrupts.h"
-#include "headers/multitasking.h"
-#include "headers/vga.h" // For prints
-#include "headers/paging.h"
-#include "headers/memory.h"
-// #include "headers/syscalls.h"
+#include <interrupts.h>
+#include <multitasking.h>
+#include <vga.h> // For prints
+#include <paging.h>
+#include <memory.h>
+#include <io.h>
 
 static idtr_t idtr;
 
@@ -53,7 +53,7 @@ extern void load_cr3_test(uint64_t pt);
 TASK_LL * task_switch_int(INT_FRAME *frame) {
 	// Pass to scheduler, get new context
 	TASK_LL *new_task = schedule(frame);
-	if (new_task == NULL) return frame;
+	if (new_task == NULL) return current_item;
 
 	if (new_task->PID == 0) {
 		// load_kernel_segment();
@@ -198,8 +198,7 @@ __attribute__((interrupt));
 void kb_handler() {
 	__asm__ volatile ("cli");
 	uint8_t scode = inb(PS2_PORT);
-	printf("%d\n", scode); 
-	// Eventually spawn a new process to handle the input of keyboard keys
+	printf("%x\n", scode); 
 	// For now can decode code here and place on screen
 	picEOI(0x21-PIC1_OFFSET);
 	__asm__ volatile ("sti");
@@ -224,6 +223,14 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
     descriptor->isr_high = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
     descriptor->reserved = 0;
 
+}
+
+void set_pit_freq(uint16_t reload_count) {
+	CLI();
+	outb(PIT_CHNL_0, reload_count & 0xFF);
+	io_wait();
+	outb(PIT_CHNL_0, (reload_count & 0xFF00) >> 8);
+	STI();
 }
 
 extern void *isr_stub_table[];
@@ -256,29 +263,9 @@ void activate_interrupts() {
 	__asm__ volatile("sti");
 }
 
-/*
-	Waits for a bit, some devices are slowwwww
-*/
-static inline void io_wait(void) {
-    outb(0x80, 0); // Unused IO port - wasted IO cycle gives other devices time to catch up
-}
 
-// IO functions - for communicating on IO bus
-void picEOI(unsigned char irq) {
-	if (irq >= 8)
-		outb(PIC2_COMMAND, PIC_EOI);
-	outb(PIC1_COMMAND, PIC_EOI); // If IRQ came from slave, EOI must be sent to both
-}
 
-void set_pit_freq(uint16_t reload_count) {
-	CLI();
-	outb(PIT_CHNL_0, reload_count & 0xFF);
-	io_wait();
-	outb(PIT_CHNL_0, (reload_count & 0xFF00) >> 8);
-	STI();
-}
-
-#include "headers/ata.h"
+#include <ata.h>
 
 void detect(uint16_t port, int master) {
     // Indentifying drive
@@ -300,12 +287,22 @@ void detect(uint16_t port, int master) {
 	// Sector count port
 	outb(port+2, 0);
 
-	//lba low
-	outb(port+3, 0);
-	//lba mid
-	outb(port+4, 0);
-	//lba hi
-	outb(port+5, 0); 	
+	// //lba low
+	// outb(port+3, 0);
+	// //lba mid
+	// outb(port+4, 0);
+	// //lba hi
+	// outb(port+5, 0); 	
+
+	// Checking if these are ATA
+	int lbalow = inb(port+3);
+	int lbamid = inb(port+4);
+	int lbahi  = inb(port+5);
+
+	if (lbalow || lbamid || lbahi) {
+		printf("This device is not ATA.\n");
+		return;
+	}
 
 	//command
 	outb(port+7, 0xEC);
@@ -318,10 +315,13 @@ void detect(uint16_t port, int master) {
 
 
 	// Wait until device is ready
-	while(((status & 0x80) == 0x80)
-			&& ((status & 0x01) != 0x01))
-			status = inb(port+7);
+	// while(((status & 0x80) == 0x80)
+	// 		&& ((status & 0x01) != 0x01))
+	// 		status = inb(port+7);
 
+	for (int i=0; i<15; i++) {
+		status = inb(port+7);
+	}
 
 	if (status & 0x01) {
 		printf("ERROR %d\n", status);
@@ -340,69 +340,3 @@ void detect(uint16_t port, int master) {
 
 }
 
-
-/*
-	Port to comms on and value to send
-*/
-static inline void outb(uint16_t port, uint8_t val) {
-    asm volatile ( "outb %0, %1" : : "a"(val), "Nd"(port) );
-    /* There's an outb %al, $imm8  encoding, for compile-time constant port numbers that fit in 8b.  (N constraint).
-     * Wider immediate constants would be truncated at assemble-time (e.g. "i" constraint).
-     * The  outb  %al, %dx  encoding is the only option for all other cases.
-     * %1 expands to %dx because  port  is a uint16_t.  %w1 could be used if we had the port number a wider C type */
-}
-
-/* 
-	Poll port for input
-*/
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ( "inb %1, %0"
-                   : "=a"(ret)
-                   : "Nd"(port) );
-    return ret;
-}
-
-// Remapping PIC
-/*
-	Interrupts produced by PIC can't intefere with OS interrupts. 
-	By default, PIC interrupts from 0x00 to 0x0F - there are two PICs, one master and one slave
-*/
-void remapPIC() {
-	uint8_t a1, a2;
-
-	a1 = inb(PIC1_DATA);
-	io_wait();
-	a2 = inb(PIC2_DATA);
-	io_wait();
-
-	//Init master
-	outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
-	io_wait();
-	outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
-	io_wait();
-
-	//PICs need to know offsets
-	outb(PIC1_DATA, PIC1_OFFSET);
-	io_wait();
-	outb(PIC2_DATA, PIC2_OFFSET);
-	io_wait();
-
-	//How do PICs correspond to eachother? Don't understand this bit
-	outb(PIC1_DATA, 4);
-	io_wait();
-	outb(PIC2_DATA, 2);
-	io_wait();
-
-	//8086 mode
-	outb(PIC1_DATA, ICW4_8086);
-	io_wait();
-	outb(PIC2_DATA, ICW4_8086);
-	io_wait();
-
-	//Restore bitmasks saved at beginning
-	outb(PIC1_DATA, a1);
-	io_wait();
-	outb(PIC2_DATA, a2);
-	io_wait();
-}

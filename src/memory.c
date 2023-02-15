@@ -1,10 +1,12 @@
-#include "headers/memory.h"
-#include "headers/vga.h"
+#include <memory.h>
+#include <vga.h>
+#include <fs.h>
 
 // Bitmap based
 void *BITMAP_base;
 void *BITMAP_end;
 //Define macro here for conversions
+uint64_t initrd_start;
 
 //
 void *mmap(int argv, ...) {
@@ -74,8 +76,20 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                 }
 
                 break;
+            case MULTIBOOT_TAG_TYPE_MODULE:
+                struct multiboot_tag_module *initrd = (struct multiboot_tag_mmap*) tag;
+                // initrd += KERNEL_OFFSET; // Mapping to higher space
+                initrd_start = initrd->mod_start;
+
+                printf("Module start: %d\n", initrd->mod_start);
+                printf("Module end: %d\n", initrd->mod_end);
+                printf("Module size: %d\n", initrd->size);
+                printf("Module type: %d\n", initrd->type);
+                int no = get_number_of_files(initrd->mod_start);
+                printf("Number of files in the module %d\n", no);
+
             default:
-                //kprintf("Unkown tag %x, size %x\n", tag->type, tag->size);
+                printf("Unkown tag %x, size %x\n", tag->type, tag->size);
                 break;
         }
 

@@ -1,7 +1,7 @@
-#include "headers/syscalls.h"
-#include "headers/vga.h"
-#include "headers/interrupts.h"
-#include "headers/types.h"
+#include <syscalls.h>
+#include <vga.h>
+#include <interrupts.h>
+#include <types.h>
 
 void * syscall_handler(INT_FRAME frame) {
     printf("ello there chappy\n");

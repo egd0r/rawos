@@ -1,5 +1,5 @@
-#include "headers/paging.h"
-#include "headers/memory.h"
+#include <paging.h>
+#include <memory.h>
 
 // Returns PHYSICAL address of new page table
 // Self referenced in 510th entry of LVL4 giving the same virtual address for all processes

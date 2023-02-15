@@ -1,6 +1,6 @@
-#include "headers/types.h"
-#include "headers/multitasking.h"
-#include "headers/memory.h"
+#include <types.h>
+#include <multitasking.h>
+#include <memory.h>
 
 // Global variables
 TASK_LL *ready_start = NULL;
@@ -260,8 +260,6 @@ int kill_task(int pid) {
 
 // Simple RR scheduler
 TASK_LL * schedule(INT_FRAME *curr_proc_state) {
-    if (ready_start == NULL)
-        return NULL;
 
     current_item->heap_current = heap_current;
     // *(current_item->state) = *curr_proc_state; // Temp
@@ -272,12 +270,15 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     // current_item->stack -= sizeof(CPU_STATE);
     // *((CPU_STATE *)current_item->stack) = curr_proc_state; // Saving new context
 
-    current_item->task_state = READY;
-    ready_end->next = current_item;
-    ready_end = ready_end->next;
-    current_item = ready_start;
-    current_item->task_state = RUNNING;
-    ready_start = ready_start->next; // Progress ready_start
+    if (ready_start != NULL) {
+        current_item->task_state = READY;
+        ready_end->next = current_item;
+        ready_end = ready_end->next;
+        current_item = ready_start;
+        current_item->task_state = RUNNING;
+        ready_start = ready_start->next; // Progress ready_start
+
+    }
 
     heap_current = current_item->heap_current;
 
