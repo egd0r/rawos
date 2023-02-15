@@ -113,7 +113,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
 	// print_reg_state(frame);
 	void *ret = frame;
-	if (frame->vector >= 0x20 && frame->vector < 0x30) {
+	if (frame->vector == 0x20) {
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
 		ms_since_boot += time_between_irq_ms;
@@ -148,6 +148,8 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		allocate_here(arg);
 
 		// Memory access is re-run
+	} else if (frame->vector == 0x21) {
+		kb_handler();
 	} else if (frame->vector == 0x80) {
 		syscall_handler(*frame);
 	} else {
@@ -160,48 +162,57 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 	return ret;
 }
 
+char kbd_us [128] =
+{
+    0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
+  '\t', /* <-- Tab */
+  'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',     
+    0, /* <-- control key */
+  'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',  0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',   0,
+  '*',
+    0,  /* Alt */
+  ' ',  /* Space bar */
+    0,  /* Caps lock */
+    0,  /* 59 - F1 key ... > */
+    0,   0,   0,   0,   0,   0,   0,   0,
+    0,  /* < ... F10 */
+    0,  /* 69 - Num lock*/
+    0,  /* Scroll Lock */
+    0,  /* Home key */
+    0,  /* Up Arrow */
+    0,  /* Page Up */
+  '-',
+    0,  /* Left Arrow */
+    0,
+    0,  /* Right Arrow */
+  '+',
+    0,  /* 79 - End key*/
+    0,  /* Down Arrow */
+    0,  /* Page Down */
+    0,  /* Insert Key */
+    0,  /* Delete Key */
+    0,   0,   0,
+    0,  /* F11 Key */
+    0,  /* F12 Key */
+    0,  /* All other keys are undefined */
+};
 
-__attribute__((interrupt));
-void panic(INT_FRAME frame) {
-	__asm__ volatile ("cli");
-	printf("Non recoverable interrupt 0x%2x, PANIC PANIC PANIC\n", frame.vector);
-	print_reg_state(frame);
-
-	__asm__ volatile ("hlt");
-}
-
-__attribute__((interrupt));
-void pagefault_handler() {
-	__asm__ volatile ("cli");
-	printf("Page fault detected.");
-	while(1); // Spin
-}
-
-// No ISR! Cannot recover. ABORT.
-__attribute__((interrupt));
-void doublefault_handler() {
-	__asm__ volatile ("cli");
-	printf("Double fault detected.");
-	while(1); // Spin
-}
-
-// Segment error, executing priv instructions in user mode, can point to offending instruction 
-// Can be recoverered from
-__attribute__((interrupt));
-void gpfault_handler() {
-	__asm__ volatile ("cli");
-	printf("General protection fault detected.");
-	while(1); // Spin
-}
-
-__attribute__((interrupt));
+extern IN_STREAM stream;
+extern char in_;
+// __attribute__((interrupt));
 void kb_handler() {
-	__asm__ volatile ("cli");
+	// __asm__ volatile ("cli");
 	uint8_t scode = inb(PS2_PORT);
-	printf("%x\n", scode); 
+	// printf("%x ", scode);
+	// If key PRESSED
+	if (scode < 0x81) {
+		stream.position = (stream.position+1)%100;
+		stream.buffer[stream.position] = kbd_us[scode];
+		// in_ = kbd_us[scode];
+	}
 	// For now can decode code here and place on screen
 	picEOI(0x21-PIC1_OFFSET);
-	__asm__ volatile ("sti");
+	// __asm__ volatile ("sti");
 }
 
 __attribute__((interrupt));
@@ -253,7 +264,7 @@ void idt_init() {
 	outb(PIC1_DATA, 0b11111100); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 
 	// idt_set_descriptor(0x20, &pit, IDT_TA_InterruptGate); //Programmable interrupt timer, for scheduling tasks
-	idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
+	// idt_set_descriptor(0x21, &kb_handler, IDT_TA_InterruptGate); //KB corresponds to 0x20 (offset) +  0x02 (KB)
 
 	__asm__ volatile("lidt %0" : : "m"(idtr));
 	CLI();

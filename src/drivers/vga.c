@@ -98,7 +98,7 @@ void printf(const char *format, ...) {
             char *str;
 
             char paddingChar;
-            if ( *string == 'b' || *string == 'd' || *string == 'o' || *string == 'x' ) {
+            if ( *string == 'b' || *string == 'd' || *string == 'o' || *string == 'x' || *string == 'c' ) {
                 paddingChar = '0';
                 dec = va_arg(arg, int);
             } 
@@ -106,6 +106,8 @@ void printf(const char *format, ...) {
             switch ( *string ) {
                 case 'c':
                     putchar(dec);
+                    string++;
+                    continue;
                     break;
                 case 'd':
                     base = 10;

@@ -20,6 +20,16 @@
 
 #define PS2_PORT	0x60
 
+// Input buffer stream, can attatch these to processes
+#define NO_CHAR 0xFF
+typedef struct stream_io {
+    int accessed;
+    int position;
+    char buffer[100];
+} IN_STREAM;
+
+char getch(); 
+
 void outb(uint16_t port, uint8_t val);
 uint8_t inb(uint16_t port);
 void io_wait(void);

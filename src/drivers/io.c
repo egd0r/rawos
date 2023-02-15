@@ -1,5 +1,24 @@
 #include <io.h>
 
+IN_STREAM stream = { .accessed = 0, .position = -1 };
+int in_ = -1;
+
+char getch() {
+	if (stream.position == -1) {
+		return -1;
+	}
+	else {
+		// stream.accessed = 1;
+		// int curr_pos = stream.position;
+		// stream.position--;
+		// int ret = stream.buffer[curr_pos];
+		// stream.accessed = 0;
+		int ret = stream.buffer[(stream.position)--];
+		return ret;
+	} 
+}
+
+
 /*
 	Port to comms on and value to send
 */

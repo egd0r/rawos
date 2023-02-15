@@ -7,6 +7,7 @@
 #include <multitasking.h>
 //For testing
 #include <ata.h>
+#include <io.h>
 
 /*
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
@@ -147,9 +148,20 @@ int kmain(unsigned long mbr_addr) {
     // -> Examine stack and swaps incase of error
     // switch_task(current_item->stack);
 
+
     cls();
+    extern uint64_t ms_since_boot;
+    while(ms_since_boot != 10000);
+    // printf("%c ", getch());
+    // printf("%c ", getch());
+    // printf("%c ", getch());
+    // printf("%c ", getch());
+    // printf("%c ", getch());
+
     while (1) {
     //   printf("kernel task");
+        char ch = getch();
+        if (ch != -1) printf("%c ", ch);
     }; //Spin on hang
     // Spawn init process
     
