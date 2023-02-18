@@ -8,6 +8,12 @@ void *BITMAP_end;
 //Define macro here for conversions
 uint64_t initrd_start;
 
+void memcpy(uint64_t *from, uint64_t *to, uint64_t size) {
+    for (int i=0; i<size; i++) {
+        from[i] = to[i];
+    }
+}
+
 //
 void *mmap(int argv, ...) {
     return NULL;
@@ -38,7 +44,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
 
     int largestFreeSize = 0;
 
-    // printf("Kernel starts physaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
+    // kprintf("Kernel starts physaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
     for (tag = (struct multiboot_tag*) (mbr_addr + 8);
          tag->type != MULTIBOOT_TAG_TYPE_END;
          tag = (struct multiboot_tag*) ((multiboot_uint8_t *) tag
@@ -48,7 +54,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
         {
             case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
                 struct multiboot_tag_basic_meminfo *mem = (struct multiboot_tag_basic_meminfo*) tag;
-                printf("Basic memory area %x - %x\n",
+                kprintf("Basic memory area %x - %x\n",
                        mem->mem_lower,
                        mem->mem_upper);
                 break;
@@ -62,7 +68,7 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                         mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
                             + mmapTag->entry_size), i++)
                 {
-                    // printf("Memory area starting at %x with "
+                    // kprintf("Memory area starting at %x with "
                     //         "length of %x and type %x\n",
                     //         (mmap->addr),
                     //         (mmap->len),
@@ -81,22 +87,22 @@ struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
                 // initrd += KERNEL_OFFSET; // Mapping to higher space
                 initrd_start = initrd->mod_start;
 
-                printf("Module start: %d\n", initrd->mod_start);
-                printf("Module end: %d\n", initrd->mod_end);
-                printf("Module size: %d\n", initrd->size);
-                printf("Module type: %d\n", initrd->type);
+                kprintf("Module start: %d\n", initrd->mod_start);
+                kprintf("Module end: %d\n", initrd->mod_end);
+                kprintf("Module size: %d\n", initrd->size);
+                kprintf("Module type: %d\n", initrd->type);
                 int no = get_number_of_files(initrd->mod_start);
-                printf("Number of files in the module %d\n", no);
+                kprintf("Number of files in the module %d\n", no);
 
             default:
-                printf("Unkown tag %x, size %x\n", tag->type, tag->size);
+                kprintf("Unkown tag %x, size %x\n", tag->type, tag->size);
                 break;
         }
 
     }
     //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
     // map_physical_pages(1, 0x200000*9, 0); // Allocating what's already been mapped in HUGEPAGES - so overkill lol
-    printf("%x %x\n", &KERNEL_START, &KERNEL_END);
+    kprintf("%x %x\n", &KERNEL_START, &KERNEL_END);
 
 }
 
@@ -141,7 +147,7 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
     BITMAP_end = base+i;
 
     
-    // printf("%x %d actual physical pages mapped as %d\n", base, i, allocated);
+    // kprintf("%x %d actual physical pages mapped as %d\n", base, i, allocated);
 }
 
 // For contiguous physical allocations, DMA etc
@@ -175,7 +181,7 @@ void * kalloc_physical(size_t size) {
         }
     }
 
-    printf("No space for this allocation.");
+    kprintf("No space for this allocation.");
     return ret;
 }
 
@@ -215,7 +221,7 @@ void *allocate_page(size_t size) {
     uint64_t *space = (uint64_t *)free_page_space(page_l1, size);
 
     if (space == BAD_PTR) {
-        printf("uh oh!!!\n");
+        kprintf("uh oh!!!\n");
         return;
     }
 
@@ -241,7 +247,7 @@ uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
         uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
 
         if (space == BAD_PTR) {
-            printf("uh oh!!!\n");
+            kprintf("uh oh!!!\n");
             return NULL;
         }
 
@@ -516,7 +522,7 @@ chunk_n * combine(chunk_n *start, chunk_n *end) {
     //Increasing size of remaining chunk to include removed chunk
     start->size += end->size + sizeof(chunk_n);
 
-    printf("Coalesced %x with %x, inserting into correct bin!\n", start, end);
+    kprintf("Coalesced %x with %x, inserting into correct bin!\n", start, end);
     //Replacing remaining chunk into bin
     place_in_bin(start);
     return start;
@@ -532,7 +538,7 @@ void *create_new_mmap_space(int bytes) {
     void *newMemPtr = mmap(NULL, bytes+sizeof(chunk_n), PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     
     *((chunk_n *)newMemPtr) = newAllocated;
-    printf("\tMemory provided by mmap at: %x\n", newMemPtr);
+    kprintf("\tMemory provided by mmap at: %x\n", newMemPtr);
 
 
     return newMemPtr;
@@ -544,81 +550,48 @@ void *create_new_heap_space() {
     //Condition checks whether new heap is adjecent in memory to previous heap created
     //Allows coalescing of heap spaces
     void *prev = sbrk(0);
-    // if (next_chunk(tail_of_last_heapchunk) == prev && prev != BAD_PTR) {
-    //     printf("\tNew heap chunk is adjecent to the last one\n"); 
-    //     //Creating new tail to place at end of new heap
-    //     chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL, .prev=tail_of_last_heapchunk->prev };
-    //     //Creating new free chunk to be placed within memory, supplying it with the entire size of
-    //     //  the new heap, excluding the tail metadata
-    //     chunk_n newFreeChunk = { .prev_size=tail_of_last_heapchunk->prev_size, .size=DEFAULT_BYTES-sizeof(tail_heap), .next=NULL, .prev=NULL };
-        
-    //     //Calling sbrk to advance the heap pointer by the default amount
-    //     void *newMemPtr = sbrk(DEFAULT_BYTES);
+    //Creating heap metadata
+    // chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
+    chunk_n tail_heap;
+    tail_heap.next = NULL;
+    tail_heap.size = 0 | ALLOCATED_MASK;
 
-    //     //Placing tail at end of heap space
-    //     void *tailInsertion = newMemPtr+(DEFAULT_BYTES-sizeof(tail_heap));
-    //     *((chunk_n *)tailInsertion) = tail_heap;
+    // chunk_n head_heap = { .size=(0 | (ALLOCATED_MASK)), .prev=tail_of_last_heapchunk };
+    chunk_n head_heap;
+    head_heap.size = 0 | ALLOCATED_MASK;
+    head_heap.prev = tail_of_last_heapchunk;
+    head_heap.prev_size = tail_of_last_heapchunk == NULL ? NULL : tail_of_last_heapchunk->size;
+    //Creating new chunk metadata       note: size defined with verbosity for clarity
+    chunk_n newFreeChunk = { .prev_size = head_heap.size, .size = DEFAULT_BYTES-(sizeof(chunk_n)+sizeof(head_heap)+sizeof(tail_heap)), .next = NULL, .prev = NULL };
 
-    //     //Overwriting previous chunk metadata with new free chunk as this chunk is no longer needed
-    //     //The new free chunk is now placed next to the last (modifiable) chunk in the previous heap
-    //     *tail_of_last_heapchunk = newFreeChunk;
-
-    //     //Attempting to combine final chunk of previous heap with new free, to create larger free space
-    //     chunk_n *ret = combine(prev_chunk(tail_of_last_heapchunk), tail_of_last_heapchunk);
-        
-    //     //Condition checks if combine was impossible, if so, set the returning variable to starting address
-    //     //of new free space (which is currently identical to where the tail used to be
-    //     if (!ret) ret = tail_of_last_heapchunk;
-
-    //     //Resetting the variable which points to the final heap tail
-    //     tail_of_last_heapchunk = tailInsertion;
-
-    //     //Returning free chunk ready to be split by new_malloc
-    //     return ret;
-    // } else { //Heap spaces are not adjecent
-        //Creating heap metadata
-        // chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
-        chunk_n tail_heap;
-        tail_heap.next = NULL;
-        tail_heap.size = 0 | ALLOCATED_MASK;
-
-        // chunk_n head_heap = { .size=(0 | (ALLOCATED_MASK)), .prev=tail_of_last_heapchunk };
-        chunk_n head_heap;
-        head_heap.size = 0 | ALLOCATED_MASK;
-        head_heap.prev = tail_of_last_heapchunk;
-        head_heap.prev_size = tail_of_last_heapchunk == NULL ? NULL : tail_of_last_heapchunk->size;
-        //Creating new chunk metadata       note: size defined with verbosity for clarity
-        chunk_n newFreeChunk = { .prev_size = head_heap.size, .size = DEFAULT_BYTES-(sizeof(chunk_n)+sizeof(head_heap)+sizeof(tail_heap)), .next = NULL, .prev = NULL };
-
-        //Calling sbrk to advance the heap pointer
-        void *newMemPtr = sbrk(DEFAULT_BYTES);
-        void *tailInsertion = newMemPtr+(DEFAULT_BYTES-sizeof(tail_heap));
-        //Linking head to tail and tail to head
-        head_heap.next=(chunk_n *)(tailInsertion);
-        tail_heap.prev=(chunk_n *)(newMemPtr);
-        //Placing heap metadata
-        *((chunk_n *)newMemPtr) = head_heap;
-        printf("test");
-        *((chunk_n *)tailInsertion) = tail_heap;
-        //Resetting pointer to final heap tail
-        tail_of_last_heapchunk = tailInsertion;
+    //Calling sbrk to advance the heap pointer
+    void *newMemPtr = sbrk(DEFAULT_BYTES);
+    void *tailInsertion = newMemPtr+(DEFAULT_BYTES-sizeof(tail_heap));
+    //Linking head to tail and tail to head
+    head_heap.next=(chunk_n *)(tailInsertion);
+    tail_heap.prev=(chunk_n *)(newMemPtr);
+    //Placing heap metadata
+    *((chunk_n *)newMemPtr) = head_heap;
+    kprintf("test");
+    *((chunk_n *)tailInsertion) = tail_heap;
+    //Resetting pointer to final heap tail
+    tail_of_last_heapchunk = tailInsertion;
 
 
-        //Calculating space of new free chunk
-        void *firstFreeLoc = newMemPtr+=sizeof(head_heap);
-        //Placing new free chunk in memory
-        *((chunk_n *)firstFreeLoc) = newFreeChunk;
+    //Calculating space of new free chunk
+    void *firstFreeLoc = newMemPtr+=sizeof(head_heap);
+    //Placing new free chunk in memory
+    *((chunk_n *)firstFreeLoc) = newFreeChunk;
 
-        //Returning free chunk ready to be split by new_malloc
-        return newMemPtr;
-    // }
+    //Returning free chunk ready to be split by new_malloc
+    return newMemPtr;
 }
 
 //Allocates a space of size "bytes" and returns a pointer to the start of the chunk
 //Has the ability to call mmap for allocations larger than those that are able to fit in the free chunks available.
 void *new_malloc(int bytes) {
 
-    printf("\n\n--- Running new_malloc function, attempting to create %d bytes ---\n", bytes);
+    kprintf("\n\n--- Running new_malloc function, attempting to create %d bytes ---\n", bytes);
     
     //Initialising pointer to free space
     chunk_n *foundFree;
@@ -635,7 +608,7 @@ void *new_malloc(int bytes) {
     }
 
     if (!foundFree) {
-        printf("ERROR with allocation, please consult Manuel\n");
+        kprintf("ERROR with allocation, please consult Manuel\n");
         return NULL;
     }
 
@@ -693,14 +666,14 @@ void new_free(void *ptr) {
 
     if (!is_allocated(foundChunk)) {
 
-        printf("Error finding foundChunk: %p\n", foundChunk);
+        kprintf("Error finding foundChunk: %p\n", foundChunk);
 
         return;
     } 
 
     //Unmasking bits from size to signify unallocated
     foundChunk->size &= (~ALLOCATED_MASK);
-    printf("\n\n--- Running new_free function, attempting to release %d bytes ---\n", foundChunk->size);
+    kprintf("\n\n--- Running new_free function, attempting to release %d bytes ---\n", foundChunk->size);
 
     //Checking if temp exists in much smaller mmap list
     chunk_n *temp = mmap_space_head;
@@ -709,7 +682,7 @@ void new_free(void *ptr) {
             //If present, remove from linked list holding mmapped space
             if (remove_from_list(&mmap_space_head, foundChunk)) {
                 munmap(foundChunk, foundChunk->size+sizeof(chunk_n));
-                printf("\nSUCCESSFULLY FREED MMAPPED SPACE: %x\n", foundChunk);
+                kprintf("\nSUCCESSFULLY FREED MMAPPED SPACE: %x\n", foundChunk);
                 return;
             }
         }
@@ -723,13 +696,13 @@ void new_free(void *ptr) {
     chunk_n *nextChunk = next_chunk(foundChunk); 
     chunk_n *prevChunk = prev_chunk(foundChunk);
 
-    printf("Attempting to combine: %x with %x and %x\n", foundChunk+4, prevChunk+4, nextChunk+4);
+    kprintf("Attempting to combine: %x with %x and %x\n", foundChunk+4, prevChunk+4, nextChunk+4);
 
     //Coalescing and updating prev size
     update_prev_size(combine(foundChunk, nextChunk));
     update_prev_size(combine(prevChunk, foundChunk));
 
-    printf("\nSUCCESSFULLY FREED %x at %x. Setting as unallocated.\n", ptr+4, foundChunk+4);
+    kprintf("\nSUCCESSFULLY FREED %x at %x. Setting as unallocated.\n", ptr+4, foundChunk+4);
 }
 
 //Returns total free size in all bins
@@ -743,8 +716,8 @@ int total_freesize() {
 
 //Function searches through all free bins and prints each free list value
 void print_list() {
-    printf("\nTotal free space:%d\n", total_freesize());
-    printf("MIN |\n");
+    kprintf("\nTotal free space:%d\n", total_freesize());
+    kprintf("MIN |\n");
 
     for (int i=0; i<NUMBER_OF_BINS; i++) {
         chunk_n *temp = bin_list[i].chunk_list_head;
@@ -752,15 +725,15 @@ void print_list() {
             //Setting min from bin to print
             int min = bin_list[i].bin_min;
             if (bin_list[i].bin_min == -1) min=0;
-            printf("%4d:", min);
+            kprintf("%4d:", min);
         }
         for (; temp; temp=temp->next) {
             //Outputting formatted information about current free chunk
-            if (temp->size > 0) printf("  %x - %d|", temp, temp->size);
-            //printf("In bin %d\t", i);
+            if (temp->size > 0) kprintf("  %x - %d|", temp, temp->size);
+            //kprintf("In bin %d\t", i);
         }
         if (bin_list[i].bin_size != 0)
-            printf("\n");
+            kprintf("\n");
     }
-    printf("\n");
+    kprintf("\n");
 }

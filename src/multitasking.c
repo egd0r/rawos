@@ -2,6 +2,8 @@
 #include <multitasking.h>
 #include <memory.h>
 
+#define VIDEO_MEM_PAGES 1
+
 // Global variables
 TASK_LL *ready_start = NULL;
 TASK_LL *ready_end = NULL;
@@ -94,9 +96,21 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
 
 extern uint64_t page_table_l4; // Kernel data
 // Loading state into new address space
-uint8_t * place_state(void * cr3, void * entry_point) {
-    if (entry_point != 0x00)
+uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
+    // Getting physical address of mapping
+    uint64_t new_task_phys = get_pagetable_entry(new_task);
+    // Place this within tasks address space
+    // Cause PF to allocate new space
+
+    if (entry_point != 0x00) {
+        // Load address space of new task
         load_cr3(cr3);
+        *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
+        // Accessing allocated page
+        // *((uint64_t *)PAGE_DIR_VIRT)
+        uint64_t *proc_space = ((uint64_t *)0xffffff0000028000);
+        proc_space[1] = new_task_phys; //Mapping to own process context done here
+    }
 
     INT_FRAME new_state = {0};
     uint8_t *stack_pos = 0x80000ff0;
@@ -130,27 +144,6 @@ extern uint64_t page_table_l3; // Kernel data
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
     uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L3 table
-    // uint64_t *l3_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L2 table
-    // uint64_t *l2_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Allocating new page for L1 table
-    // uint64_t *l1_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-    // // Linking L4 -> L3
-    // l4_pt_virt[0] = get_pagetable_entry(l3_pt_virt);
-    // // Linking L3 -> L2
-    // l3_pt_virt[0] = get_pagetable_entry(l2_pt_virt);
-    // // Linking L2 -> L1
-    // l2_pt_virt[0] = get_pagetable_entry(l1_pt_virt);    
-
-    // WAIT FOR SHARED MEMORY FUNCTIONALITY? Just some more paging methods
-    // Creating entry for IDT virtual address in high memory
-
-    // Creating entry for GDT virtual address in high memory
-
-    // Getting L1 PTE of allocated page (masked physical address)
-
-    // Get physical address of entry point - this will be hugepaged so get_pagetable_entry needs to be modified
 
     uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
     // Self referencing
@@ -159,7 +152,9 @@ int create_task(void *entry_point) {
     // Mapping kernel structures
     l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF | PRESENT | RW;
 
-    TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
+    // TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
+    // Create a page for each new task
+    TASK_LL *new_task = page_alloc(PAGE_DIR_VIRT, 1);
     
     INT_FRAME new_state = {0};
 
@@ -169,16 +164,16 @@ int create_task(void *entry_point) {
     // new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
     new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
 
-    new_task->stack = place_state(new_task->cr3, entry_point);
+    new_task->stack = place_state(new_task->cr3, entry_point, new_task);
 
 
     // FILL VALUES
     if (entry_point == 0x00) {
         new_task->PID = 0;
-        new_task->heap_current = heap_current;
+        new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
     } else { 
         new_task->PID = PID_COUNTER++;
-        new_task->heap_current = HEAP_START;
+        new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
     }
     new_task->switches = 0;
 
@@ -216,7 +211,7 @@ int create_task(void *entry_point) {
         ready_end = ready_end->next;
     }
 
-    printf("Created a new task with PID %d\n", new_task->PID);    
+    kprintf("Created a new task with PID %d\n", new_task->PID);    
 
     return;    
 }

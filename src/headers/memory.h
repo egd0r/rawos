@@ -35,6 +35,7 @@ void *sbrk(int n);
 void * kalloc_physical(size_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
 void kfree_physical(void *ptr);
 void memset(uint64_t ptr, uint8_t val, uint64_t size);
+void memcpy(uint64_t *from, uint64_t *to, uint64_t size);
 // LVLs defined above
 #define p_alloc(pt_ptr, n) page_alloc(pt_ptr, PT_LVL4, n)
 // void *page_alloc(uint64_t *pt_ptr, int LVL, uint16_t n);

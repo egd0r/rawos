@@ -66,19 +66,18 @@ int kmain(unsigned long mbr_addr) {
 
     // Map pages? Already got 16MB identity mapped
     // Parse mb struct
-    cls();
     memset(BITMAP_VIRTUAL, ~0, 0x10000); //Sets bitmap to entirely allocated
 
     // Initialises memory map and finds initrd
+    cls();
     init_memory_map(mbr_addr);
 
     extern uint64_t initrd_start;
     // init_tar_fs(initrd_start);
 
-
+    create_task(0x00);
 
     syscal_test(42);
-
     // Allocate at 0
     uint64_t ptr = kalloc_physical(1);
     ptr = kalloc_physical(1);
@@ -88,7 +87,6 @@ int kmain(unsigned long mbr_addr) {
     kfree_physical((void *)ptr);
 
     // Getting 1 byte (1 page) from physical memory
-    printf("%x\n", ptr);
 
     // unmap_page(0x0); //Unmapping first 16MB 
 
@@ -110,20 +108,7 @@ int kmain(unsigned long mbr_addr) {
     uint64_t main_cr3 = (uint64_t)get_pagetable_entry(0xffffff7fbfdfe000) & ~0xFFF;
     uint64_t taskA_phys = (uint64_t)get_pagetable_entry(&taskA);
 
-    print_reg("RODATA", &RODATA_START);
-    print_reg("L4 physical", main_cr3);
-    print_reg("TA physical", taskA_phys);
 
-    // get_virt_test_i();
-
-
-    // for (int i=0; i<5; i++) {
-    //     arr[i] = i;
-    // }
-
-    // new_free(arr);
-
-    printf("OK!\n");
 
     //Trying to deref page directory - PF int 0x0E
     // *((uint64_t *)0x222222222222) = 453;
@@ -132,15 +117,21 @@ int kmain(unsigned long mbr_addr) {
     *((int *)0xb8900) = mbr_addr;   // print address
     // *((int *)0xb8900) = 0x00000000;
 
-    printf("SPINNING!\n"); 
+    kprintf("SPINNING!\n"); 
     
     // printf("\nTesting page fault: %d\n", 14);
-    create_task(0x00);
     // create_task(&taskA);
     // create_task(&taskB);
     // create_task(&taskC);
     activate_interrupts(); // sti
     // CLI();
+    
+    print_reg("RODATA", &RODATA_START);
+    print_reg("L4 physical", main_cr3);
+    print_reg("TA physical", taskA_phys);
+
+    printf("OK!\n");
+
 
     // Saves state on stack and selects a new process to run (sets current_item)
     // schedule(current_item->stack);
@@ -150,17 +141,20 @@ int kmain(unsigned long mbr_addr) {
 
 
     cls();
-    extern uint64_t ms_since_boot;
-    while(ms_since_boot != 10000);
+    // extern uint64_t ms_since_boot;
+    // while(ms_since_boot != 10000);
     // printf("%c ", getch());
     // printf("%c ", getch());
     // printf("%c ", getch());
     // printf("%c ", getch());
     // printf("%c ", getch());
 
+    // Enter adds \0 and command gets set to handler?
+
     while (1) {
     //   printf("kernel task");
         char ch = getch();
+        // if (ch == '\0') get_word();
         if (ch != -1) printf("%c ", ch);
     }; //Spin on hang
     // Spawn init process

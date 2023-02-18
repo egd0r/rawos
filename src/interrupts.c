@@ -30,11 +30,11 @@ void print_reg(char *name, uint64_t reg) {
 	uint32_t hi = (reg & 0xFFFFFFFF00000000) >> 32;
 	uint32_t lo = reg;
 
-	printf("    %s    0x%8x:%8x\n", name, hi, lo);
+	kprintf("    %s    0x%8x:%8x\n", name, hi, lo);
 }
 
 void print_reg_state(INT_FRAME frame) {
-	printf("DUMP:\n");
+	kprintf("DUMP:\n");
 	print_reg("RSP", frame.rsp);
 	print_reg("R15", frame.r15);
 	print_reg("R14", frame.r14);
@@ -97,72 +97,40 @@ void allocate_here(uint64_t virt_addr) {
 
 	page_ptr = ((((uint64_t)page_ptr << 9) | l2_index << 12) & PT_LVL1) | ((uint64_t)page_ptr & ~PT_LVL1);
 
-	if ((page_ptr[l1_index] & PRESENT) != 0) printf("error");
+	if ((page_ptr[l1_index] & PRESENT) != 0) kprintf("error in allocate here");
 	else page_ptr[l1_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
 
 	flush_tlb();
 }
 
-//Interrupt handlers
-extern void syscall_stub();
-int counter = 0;
-extern uint64_t page_table_l4; // Kernel data
-void * exception_handler(INT_FRAME * frame, uint64_t arg) {
-	// Switching to interrupt stack
 
-	// printf("Recoverable interrupt 0x%2x\n", frame.vector);
-	// print_reg_state(frame);
-	void *ret = frame;
-	if (frame->vector == 0x20) {
-		// interrupt 20h corresponds to PIT
-		// Switch contexts 
-		ms_since_boot += time_between_irq_ms;
-		uint64_t temp = frac_ms_since_boot + time_between_irq_frac;
-		if (frac_ms_since_boot > temp) ms_since_boot++; // Overflow
-		frac_ms_since_boot += temp;
 
-		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
-			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
+void switch_screen(int PID) {
+	// Map
+	// if (current_display == NULL) {
+	// 	// current_display = *current_item;
+	// 	// Copies existing video data into memory
+	// 	memcpy(HEAP_START, VIDEO, VIDEO_SIZE);
+	// 	// Swaps page of current_display
+	// }
 
-		TASK_LL *new_task = task_switch_int(frame);
+	// // Checking for same item, if so don't bother
+	// if (current_display->next == current_display) return;
 
-		picEOI(frame->vector-PIC1_OFFSET);
+	// TASK_LL *new_display = TASK(PID);
+	// if (new_display == NULL) return;
 
-		ret = (void *)(new_task->stack);
+	// current_display = new_display; // O(N)
 
-		load_cr3(new_task->cr3); // Changing to new process address space where stack is defined
-	} else if (frame->vector == 0x0D) {
-		printf("General protection fault -_-\n");
-		print_reg_state(*frame);
-		__asm__ volatile ("hlt");
-	} else if (frame->vector == 0x0E) {
-		// if (arg > heap_current || arg < heap_start) return;
-		// printf("Page fault");
-		// __asm__ volatile ("hlt");
-		/*
-			Pre-reqs for interrupt based physical memory allocation:
-			-> Add kernel structs to specific page and copy on create
-			-> 
-		*/
+	// // Map physical addresses into VIDEO_VIRT page
+	// // 0xb8000 is mapped to 0xb8000 + KERNEL_VIRT
 
-		allocate_here(arg);
-
-		// Memory access is re-run
-	} else if (frame->vector == 0x21) {
-		kb_handler();
-	} else if (frame->vector == 0x80) {
-		syscall_handler(*frame);
-	} else {
-		cls();
-		printf("Interrupted %d\n", frame->vector);
-		print_reg_state(*frame);
-		__asm__ volatile ("hlt");
-	}
-
-	return ret;
+	// load_cr3(current_display->cr3); // Changing to kernel virt space to map into video mem
+	// memcpy(HEAP_START, VIDEO, VIDEO_SIZE);
+	// load_cr3(current_item->cr3); // Changing back
 }
 
-char kbd_us [128] =
+int kbd_us [128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
   '\t', /* <-- Tab */
@@ -170,7 +138,7 @@ char kbd_us [128] =
     0, /* <-- control key */
   'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',  0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/',   0,
   '*',
-    0,  /* Alt */
+    0xA13,  /* Alt */
   ' ',  /* Space bar */
     0,  /* Caps lock */
     0,  /* 59 - F1 key ... > */
@@ -199,27 +167,102 @@ char kbd_us [128] =
 
 extern IN_STREAM stream;
 extern char in_;
-// __attribute__((interrupt));
+int alt_pressed = 0;
 void kb_handler() {
-	// __asm__ volatile ("cli");
 	uint8_t scode = inb(PS2_PORT);
-	// printf("%x ", scode);
+	// kprintf("%x ", scode);
 	// If key PRESSED
-	if (scode < 0x81) {
-		stream.position = (stream.position+1)%100;
-		stream.buffer[stream.position] = kbd_us[scode];
+	if (alt_pressed == 1) {
+		// switch_screen(scode-2); // -2 to get the PID of process to switch to
+		kprintf("GONNA SWITCH!");
+	} else if (kbd_us[scode] == 0xA13) {
+		alt_pressed = 1;
+	} else if (scode == 184) {
+		alt_pressed = 0;
+	} else if (scode < 0x81) {
+		// stream.position = (stream.position+1)%100;
+		// stream.buffer[stream.position] = kbd_us[scode];
+		printf("%c ", kbd_us[scode]);
+
+		// Backspace
+		// Call vga.rem
+		// remchar()
+
 		// in_ = kbd_us[scode];
-	}
+	} 
+	// else {
+	// 	kprintf("Unrecognised scancode: %d\n", scode);
+	// }
 	// For now can decode code here and place on screen
 	picEOI(0x21-PIC1_OFFSET);
-	// __asm__ volatile ("sti");
 }
 
 __attribute__((interrupt));
 void interrupt_handler() {
 	__asm__ volatile ("cli");
-	printf("Interrupt detected"); // Move program counter down to skip offending instruction??
+	kprintf("Interrupt detected"); // Move program counter down to skip offending instruction??
 	__asm__ volatile ("sti");
+}
+
+//Interrupt handlers
+extern void syscall_stub();
+int counter = 0;
+extern uint64_t page_table_l4; // Kernel data
+void * exception_handler(INT_FRAME * frame, uint64_t arg) {
+	// Switching to interrupt stack
+
+	// kprintf("Recoverable interrupt 0x%2x\n", frame.vector);
+	void *ret = frame;
+	if (frame->vector == 0x20) {
+		// interrupt 20h corresponds to PIT
+		// Switch contexts 
+		ms_since_boot += time_between_irq_ms;
+		uint64_t temp = frac_ms_since_boot + time_between_irq_frac;
+		if (frac_ms_since_boot > temp) ms_since_boot++; // Overflow
+		frac_ms_since_boot += temp;
+
+		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
+			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
+
+		TASK_LL *new_task = task_switch_int(frame);
+
+		picEOI(frame->vector-PIC1_OFFSET);
+
+		ret = (void *)(new_task->stack);
+
+		load_cr3(new_task->cr3); // Changing to new process address space where stack is defined
+	} else if (frame->vector == 0x0D) {
+		kprintf("General protection fault -_-\n");
+		print_reg_state(*frame);
+		__asm__ volatile ("hlt");
+	} else if (frame->vector == 0x0E) {
+		// if (arg > heap_current || arg < heap_start) return;
+		// kprintf("Page fault");
+		// __asm__ volatile ("hlt");
+		/*
+			Pre-reqs for interrupt based physical memory allocation:
+			-> Add kernel structs to specific page and copy on create
+			-> 
+		*/
+
+		allocate_here(arg);
+
+		// Memory access is re-run
+	} else if (frame->vector == 0x21) {
+		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
+			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
+		kb_handler();
+		load_cr3(frame->cr3); // Changing to new process address space where stack is defined
+	} else if (frame->vector == 0x80) {
+		syscall_handler(*frame);
+	} else {
+		cls();
+		kprintf("Interrupted %d\n", frame->vector);
+		print_reg_state(*frame);
+		__asm__ volatile ("hlt");
+	}
+
+	return ret;
 }
 
 // Pass index into IDT + pointer of subr to run
@@ -289,7 +332,7 @@ void detect(uint16_t port, int master) {
 
 	uint8_t status = inb(port+7);
 	if (status == 0xFF) {
-		printf("No device\n");
+		kprintf("No device\n");
 		return;
 	}
 
@@ -311,7 +354,7 @@ void detect(uint16_t port, int master) {
 	int lbahi  = inb(port+5);
 
 	if (lbalow || lbamid || lbahi) {
-		printf("This device is not ATA.\n");
+		kprintf("This device is not ATA.\n");
 		return;
 	}
 
@@ -320,7 +363,7 @@ void detect(uint16_t port, int master) {
 
 	status = inb(port+7);
 	if (status == 0x00) {
-		printf("No device\n");
+		kprintf("No device\n");
 		return;
 	}
 
@@ -335,7 +378,7 @@ void detect(uint16_t port, int master) {
 	}
 
 	if (status & 0x01) {
-		printf("ERROR %d\n", status);
+		kprintf("ERROR %d\n", status);
 		return;
 	}
 
@@ -346,7 +389,7 @@ void detect(uint16_t port, int master) {
 		char *foo = "  \0";
 		foo[1] = (data >> 8) & 0x00FF;
 		foo[2] = (data & 0x00FF);
-		printf(foo);
+		kprintf(foo);
 	}
 
 }

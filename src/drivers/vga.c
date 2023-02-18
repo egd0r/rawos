@@ -1,9 +1,7 @@
 #include <stdarg.h>
 #include <vga.h>
 
-void
-cls (void)
-{
+void cls (void) {
   xpos = 0; ypos = 0;
   int i;
 
@@ -18,9 +16,7 @@ cls (void)
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
 /*  Put the character C on the screen. */
-void
-putchar (int c)
-{
+void putchar (int c) {
   if (c == '\n' || c == '\r')
     {
     newline:
@@ -31,12 +27,49 @@ putchar (int c)
       return;
     }
 
-  *(video + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
-  *(video + (xpos + ypos * COLUMNS) * 2 + 1) = ATTRIBUTE;
+  // Need to be able to get current process information from shared process page
+  TASK_LL *current_proc = (TASK_LL *)PROCESS_CONT_ADDR;
+  if (current_proc->task_state == RUNNING) {
+    *(video + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
+    *(video + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+  }
+
+  *(((unsigned char *)HEAP_START) + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
+  *(((unsigned char *)HEAP_START) + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+  // to check
+//   *(video + (xpos + ypos * COLUMNS) * 2) = (c | ATT_BLACK << 12 | ATT_LT_GREY << 8);
+
+  // Update 0xb8000 if needed 
 
   xpos++;
   if (xpos >= COLUMNS)
     goto newline;
+}
+
+void kputchar (int c) {
+  if (c == '\n' || c == '\r')
+    {
+    knewline:
+      xpos = 0;
+      ypos++;
+      if (ypos >= LINES)
+        ypos = 0;
+      return;
+    }
+
+  *(video + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
+  *(video + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_RED;
+
+  xpos++;
+  if (xpos >= COLUMNS)
+    goto knewline;
+}
+
+void remchar() {
+    if (xpos == 0) return;
+    xpos--;
+    putchar(0xFF);
+    xpos--;
 }
 
 char *_itoa(int num, int base, char *buffer) {
@@ -143,5 +176,79 @@ void printf(const char *format, ...) {
         }
 
         putchar(*string);
+    }
+
+    return;
+}
+
+void kprintf(const char *format, ...) {
+
+    va_list arg;
+    va_start(arg, format);
+
+    char *string;
+
+    for (string=format; *string != '\0'; string++) {
+        if ( *string == '%' ) {
+            string++;
+
+            int padding = 0;
+            for (; is_digit(*string); string++) {
+                if (padding != 0)
+                    padding *= 10;
+                padding += _atoi(*string);
+            }
+
+            char retstr[50];
+            int dec = 0;
+            int base = 0;
+            char *str;
+
+            char paddingChar;
+            if ( *string == 'b' || *string == 'd' || *string == 'o' || *string == 'x' || *string == 'c' ) {
+                paddingChar = '0';
+                dec = va_arg(arg, int);
+            } 
+
+            switch ( *string ) {
+                case 'c':
+                    kputchar(dec);
+                    string++;
+                    continue;
+                    break;
+                case 'd':
+                    base = 10;
+                    break;
+                case 'o':
+                    base = 8;
+                    break;
+                case 'b':
+                    base = 2;
+                    break;
+                case 's':
+                    paddingChar = ' ';
+                    str = va_arg(arg, char *);
+                    break;
+                case 'x':
+                    base = 16;
+                    break;
+                default:
+                    kputchar(*string);
+            }
+
+            if (base != 0) {
+                str = _itoa(dec, base, retstr);
+            }
+
+            for (; padding > str_len(str); padding--)
+                kputchar(paddingChar);
+
+            for (; *str != '\0'; str++)
+                kputchar(*str);
+
+            string++;
+        }
+
+        kputchar(*string);
     }
 }

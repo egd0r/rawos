@@ -4,11 +4,11 @@
 #include <types.h>
 
 void * syscall_handler(INT_FRAME frame) {
-    printf("ello there chappy\n");
-    printf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
+    kprintf("ello there chappy\n");
+    kprintf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
 
     switch (frame.rax) {
-        // case 4:
+        case 4:
             printf(frame.rbx);
     }
 
@@ -82,9 +82,9 @@ void * syscall_handler(INT_FRAME frame) {
 // //   return 0;
 // // }
 
-// int times(struct tms *buf) {
-//   return -1;
-// }
+// // int times(struct tms *buf) {
+// //   return -1;
+// // }
 
 // int unlink(char *name) {
 // //   errno = ENOENT;

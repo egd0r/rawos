@@ -3,11 +3,14 @@
 // What is a task? What to save? How are they organised?
 #define MAX_TASKS_PER_BLOCK 128
 
-#include "interrupts.h"
+#include <interrupts.h>
 
 #define HEAP_START 0x5000000
 #define STACK_SIZE 4096
 #define ONE_OVER_TWO 0x80000000000000000000
+
+#define PROC_PAGE_SIZE 1
+#define PROCESS_CONT_ADDR (HEAP_START + (PROC_PAGE_SIZE << 12))
 
 #define CLI()		asm("cli");
 #define STI()		asm("sti");
@@ -23,7 +26,7 @@ enum TASK_STATE {
 
 typedef struct task_item_ll {
     int PID;
-	enum TASK_STATE task_state;
+	enum TASK_STATE task_state; // Can check state
     int parent_PID;
     int switches;
     uint8_t *stack;

@@ -6,8 +6,7 @@ int in_ = -1;
 char getch() {
 	if (stream.position == -1) {
 		return -1;
-	}
-	else {
+	} else {
 		// stream.accessed = 1;
 		// int curr_pos = stream.position;
 		// stream.position--;

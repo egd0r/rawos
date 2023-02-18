@@ -108,7 +108,7 @@ stk_bott:
 stk_top:
 
 interrupt_stack_bott:
-    resb 4096
+    resb 4096 * 4 ;; 16k
 interrupt_stack_top:
 
 
