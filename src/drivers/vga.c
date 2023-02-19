@@ -12,6 +12,16 @@ void cls (void) {
 
 }
 
+TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax) {
+    TASK_DISP_INFO ret; ret.xpos = xmin; ret.ypos = ymin; ret.xmin = xmin; ret.xmax = xmax; ret.ymin = ymin; ret.ymax = ymax;
+    
+    // if (curr != NULL) {
+    //     // Can work on moving bytes over - not essential
+    // }
+
+    return ret;
+}
+
 /*  Convert the integer D to a string and save the string in BUF. If
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
@@ -21,10 +31,10 @@ void putchar (int c, TASK_LL *current_proc) {
   if (c == '\n' || c == '\r')
     {
     newline:
-      display_blk->xpos = 0;
+      display_blk->xpos = display_blk->xmin;
       display_blk->ypos++;
-      if (display_blk->ypos >= LINES)
-        display_blk->ypos = 0;
+      if (display_blk->ypos >= display_blk->ymax)
+        display_blk->ypos = display_blk->ymin;
       return;
     }
 
@@ -45,7 +55,7 @@ void putchar (int c, TASK_LL *current_proc) {
   // Update 0xb8000 if needed 
 
   display_blk->xpos++;
-  if (display_blk->xpos >= COLUMNS)
+  if (display_blk->xpos >= display_blk->xmax)
     goto newline;
 }
 

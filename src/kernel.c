@@ -154,7 +154,7 @@ int kmain(unsigned long mbr_addr) {
     // Enter adds \0 and command gets set to handler?
 
     while (1) {
-      printf("k2");
+    //   printf("k2");
         // char ch = getch();
         // if (ch == '\0') get_word();
         // if (ch != -1) printf("%c ", ch);

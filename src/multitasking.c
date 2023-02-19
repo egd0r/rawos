@@ -168,6 +168,7 @@ int create_task(void *entry_point) {
 
     new_task->stack = place_state(new_task->cr3, entry_point, new_task);
 
+    (new_task->display_blk) = FULL_DISPLAY(NULL);
 
     // FILL VALUES
     if (entry_point == 0x00) {

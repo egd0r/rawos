@@ -40,5 +40,9 @@ void itoa (char *buf, int base, int d);
 void putchar (int c, TASK_LL *current_proc);
 void printf(const char *format, ...);
 void kprintf(const char *format, ...);
+TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax);
 
 #define putc(c) putchar(c, current_item)
+#define FULL_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS, 0, LINES);
+#define LH_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS/2, 0, LINES);
+#define RH_DISPLAY(curr) create_task_disp(curr, COLUMNS/2, COLUMNS, 0, LINES);

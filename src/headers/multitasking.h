@@ -30,6 +30,10 @@ enum TASK_STATE {
 typedef struct TASK_DISPLAY_INFO {
     int xpos;
     int ypos;
+	int xmin;
+	int xmax;
+	int ymin;
+	int ymax;
 } TASK_DISP_INFO;
 
 
