@@ -105,29 +105,26 @@ void allocate_here(uint64_t virt_addr) {
 
 
 
+extern uint64_t page_table_l4; // Kernel data
 void switch_screen(int PID) {
-	// Map
-	// if (current_display == NULL) {
-	// 	// current_display = *current_item;
-	// 	// Copies existing video data into memory
-	// 	memcpy(HEAP_START, VIDEO, VIDEO_SIZE);
-	// 	// Swaps page of current_display
-	// }
-
-	// // Checking for same item, if so don't bother
-	// if (current_display->next == current_display) return;
-
-	// TASK_LL *new_display = TASK(PID);
-	// if (new_display == NULL) return;
-
-	// current_display = new_display; // O(N)
-
-	// // Map physical addresses into VIDEO_VIRT page
-	// // 0xb8000 is mapped to 0xb8000 + KERNEL_VIRT
-
-	// load_cr3(current_display->cr3); // Changing to kernel virt space to map into video mem
-	// memcpy(HEAP_START, VIDEO, VIDEO_SIZE);
-	// load_cr3(current_item->cr3); // Changing back
+	// Selecting current process
+	// Return if current process is being displayed already
+	// Get task corresponding to PID passed
+	load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
+	TASK_LL *task_new = TASK(PID);
+	if (task_new != NULL && ((task_new->flags & DISPLAY_TRUE) != DISPLAY_TRUE)) {
+		// Accessing kernel structures, changing task displayed
+		current_display->flags &= (~DISPLAY_TRUE);
+		current_display = task_new;
+		current_display->flags |= DISPLAY_TRUE;
+		// Switching to new process display
+		load_cr3(current_display->cr3); 
+		// Copy current display to video out
+		memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 80*24 * 4);
+		kprintf("SWITCHED to %d!", PID);
+	}
+	// Load current task again before return
+	load_cr3(current_item->cr3);
 }
 
 int kbd_us [128] =
@@ -172,17 +169,23 @@ void kb_handler() {
 	uint8_t scode = inb(PS2_PORT);
 	// kprintf("%x ", scode);
 	// If key PRESSED
-	if (alt_pressed == 1) {
-		// switch_screen(scode-2); // -2 to get the PID of process to switch to
-		kprintf("GONNA SWITCH!");
-	} else if (kbd_us[scode] == 0xA13) {
+	if (kbd_us[scode] == 0xA13) {
 		alt_pressed = 1;
+		// kprintf("ALT pressed!");
 	} else if (scode == 184) {
 		alt_pressed = 0;
+		// kprintf("ALT released!");
+	} else if (alt_pressed == 1 && scode < 0x81) {
+		if (scode == 11) {
+			switch_screen(0);
+		} else {
+			switch_screen(scode-1); // -2 to get the PID of process to switch to
+		}
 	} else if (scode < 0x81) {
 		// stream.position = (stream.position+1)%100;
 		// stream.buffer[stream.position] = kbd_us[scode];
-		printf("%c ", kbd_us[scode]);
+		// printf("%c ", kbd_us[scode]);
+		putchar(kbd_us[scode], current_display);
 
 		// Backspace
 		// Call vga.rem
@@ -207,7 +210,6 @@ void interrupt_handler() {
 //Interrupt handlers
 extern void syscall_stub();
 int counter = 0;
-extern uint64_t page_table_l4; // Kernel data
 void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 	// Switching to interrupt stack
 
@@ -249,10 +251,11 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 
 		// Memory access is re-run
 	} else if (frame->vector == 0x21) {
-		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
-			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
+		// Caused TF -> GPF
+		// if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
+		// 	load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
 		kb_handler();
-		load_cr3(frame->cr3); // Changing to new process address space where stack is defined
+		// load_cr3(frame->cr3); // Changing to new process address space where stack is defined
 	} else if (frame->vector == 0x80) {
 		syscall_handler(*frame);
 	} else {

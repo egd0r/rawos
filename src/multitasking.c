@@ -11,6 +11,7 @@ TASK_LL *ready_end = NULL;
 TASK_LL *blocked = NULL;
 
 TASK_LL *current_item = NULL;
+TASK_LL *current_display = NULL;
 
 TASK_LL *terminated_curr = NULL;
 
@@ -102,15 +103,13 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     // Place this within tasks address space
     // Cause PF to allocate new space
 
-    if (entry_point != 0x00) {
-        // Load address space of new task
-        load_cr3(cr3);
-        *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
-        // Accessing allocated page
-        // *((uint64_t *)PAGE_DIR_VIRT)
-        uint64_t *proc_space = ((uint64_t *)0xffffff0000028000);
-        proc_space[1] = new_task_phys; //Mapping to own process context done here
-    }
+    // Load address space of new task
+    load_cr3(cr3);
+    *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
+    // Accessing allocated page
+    // *((uint64_t *)PAGE_DIR_VIRT)
+    uint64_t *proc_space = ((uint64_t *)0xffffff0000028000);
+    proc_space[1] = new_task_phys; //Mapping to own process context done here
 
     INT_FRAME new_state = {0};
     uint8_t *stack_pos = 0x80000ff0;
@@ -143,18 +142,22 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
 extern uint64_t page_table_l3; // Kernel data
 int create_task(void *entry_point) {
     // Allocating new page for L4 table
-    uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+    TASK_LL *new_task = kp_alloc(PAGE_DIR_VIRT, 1);
 
-    uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
-    // Self referencing
-    l4_pt_virt[510] = l4_pt_phys;
-
-    // Mapping kernel structures
-    l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF | PRESENT | RW;
+    if (entry_point != 0x00) {
+        uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
+        uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
+        // Self referencing
+        l4_pt_virt[510] = l4_pt_phys;
+        // Mapping kernel structures
+        l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF | PRESENT | RW;
+        new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+    } else {
+        new_task->cr3 = (uint64_t *)((uint64_t)(&page_table_l4)&0xFFFFF);
+    }
 
     // TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
     // Create a page for each new task
-    TASK_LL *new_task = page_alloc(PAGE_DIR_VIRT, 1);
     
     INT_FRAME new_state = {0};
 
@@ -162,7 +165,6 @@ int create_task(void *entry_point) {
     // new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
     //Pointing stack to end
     // new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
-    new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
 
     new_task->stack = place_state(new_task->cr3, entry_point, new_task);
 
@@ -170,7 +172,9 @@ int create_task(void *entry_point) {
     // FILL VALUES
     if (entry_point == 0x00) {
         new_task->PID = 0;
+        new_task->flags |= DISPLAY_TRUE;
         new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
+        current_display = new_task;
     } else { 
         new_task->PID = PID_COUNTER++;
         new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output

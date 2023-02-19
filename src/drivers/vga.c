@@ -16,33 +16,36 @@ void cls (void) {
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
 /*  Put the character C on the screen. */
-void putchar (int c) {
+void putchar (int c, TASK_LL *current_proc) {
+  TASK_DISP_INFO *display_blk = &(current_proc->display_blk);
   if (c == '\n' || c == '\r')
     {
     newline:
-      xpos = 0;
-      ypos++;
-      if (ypos >= LINES)
-        ypos = 0;
+      display_blk->xpos = 0;
+      display_blk->ypos++;
+      if (display_blk->ypos >= LINES)
+        display_blk->ypos = 0;
       return;
     }
 
   // Need to be able to get current process information from shared process page
-  TASK_LL *current_proc = (TASK_LL *)PROCESS_CONT_ADDR;
-  if (current_proc->task_state == RUNNING) {
-    *(video + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
-    *(video + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+  if ((current_proc->flags & DISPLAY_TRUE) == DISPLAY_TRUE) {
+    *(video + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
+    *(video + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+    // *(video + (display_blk->xpos + display_blk->ypos)) = c & 0xFF;
+    // *(video + (display_blk->xpos + display_blk->ypos) + 1) = ATT_LT_GREY;
+    // *((uint16_t *)video + (display_blk->xpos + display_blk->ypos)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
   }
 
-  *(((unsigned char *)HEAP_START) + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
-  *(((unsigned char *)HEAP_START) + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+  *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
+  *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
   // to check
 //   *(video + (xpos + ypos * COLUMNS) * 2) = (c | ATT_BLACK << 12 | ATT_LT_GREY << 8);
 
   // Update 0xb8000 if needed 
 
-  xpos++;
-  if (xpos >= COLUMNS)
+  display_blk->xpos++;
+  if (display_blk->xpos >= COLUMNS)
     goto newline;
 }
 
@@ -63,13 +66,6 @@ void kputchar (int c) {
   xpos++;
   if (xpos >= COLUMNS)
     goto knewline;
-}
-
-void remchar() {
-    if (xpos == 0) return;
-    xpos--;
-    putchar(0xFF);
-    xpos--;
 }
 
 char *_itoa(int num, int base, char *buffer) {
@@ -99,12 +95,6 @@ int str_len(char *string) {
     for (; *string != '\0'; string++)
         ret++;
     return ret;
-}
-
-void pad(char paddingChar, int length) {
-    if (length <= 0) return;
-    for (int i=0; i<length; i++)
-        putchar(paddingChar);
 }
 
 void printf(const char *format, ...) {
@@ -138,7 +128,7 @@ void printf(const char *format, ...) {
 
             switch ( *string ) {
                 case 'c':
-                    putchar(dec);
+                    putchar(dec, (TASK_LL *)PROCESS_CONT_ADDR);
                     string++;
                     continue;
                     break;
@@ -159,7 +149,7 @@ void printf(const char *format, ...) {
                     base = 16;
                     break;
                 default:
-                    putchar(*string);
+                    putchar(*string, (TASK_LL *)PROCESS_CONT_ADDR);
             }
 
             if (base != 0) {
@@ -167,15 +157,15 @@ void printf(const char *format, ...) {
             }
 
             for (; padding > str_len(str); padding--)
-                putchar(paddingChar);
+                putchar(paddingChar, (TASK_LL *)PROCESS_CONT_ADDR);
 
             for (; *str != '\0'; str++)
-                putchar(*str);
+                putchar(*str, (TASK_LL *)PROCESS_CONT_ADDR);
 
             string++;
         }
 
-        putchar(*string);
+        putchar(*string, (TASK_LL *)PROCESS_CONT_ADDR);
     }
 
     return;
@@ -251,4 +241,6 @@ void kprintf(const char *format, ...) {
 
         kputchar(*string);
     }
+
+    return;
 }

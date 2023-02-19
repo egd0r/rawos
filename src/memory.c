@@ -8,9 +8,9 @@ void *BITMAP_end;
 //Define macro here for conversions
 uint64_t initrd_start;
 
-void memcpy(uint64_t *from, uint64_t *to, uint64_t size) {
+void memcpy(uint8_t *from, uint8_t *to, uint64_t size) {
     for (int i=0; i<size; i++) {
-        from[i] = to[i];
+        to[i] = from[i];
     }
 }
 

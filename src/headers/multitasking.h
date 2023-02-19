@@ -17,6 +17,9 @@
 
 extern uint64_t ms_since_boot; // Making ms_since_boot global
 
+// Flags
+#define DISPLAY_TRUE 0x01
+
 // Organisaion
 enum TASK_STATE {
 	RUNNING,
@@ -24,14 +27,22 @@ enum TASK_STATE {
 	READY
 };
 
+typedef struct TASK_DISPLAY_INFO {
+    int xpos;
+    int ypos;
+} TASK_DISP_INFO;
+
+
 typedef struct task_item_ll {
     int PID;
+	int flags;
 	enum TASK_STATE task_state; // Can check state
     int parent_PID;
     int switches;
     uint8_t *stack;
 	uint8_t *heap_current;
 	uint64_t cr3;
+	TASK_DISP_INFO display_blk;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;
@@ -59,5 +70,8 @@ TASK_LL * find_prev_task(int pid);
 
 
 extern TASK_LL *current_item; // Making current item global for TESTING purposes 
+extern TASK_LL *current_display; // Making current item global for TESTING purposes 
 extern uint8_t *heap_start; // HERE FOR TESTING PURPOSES, should be per process
 extern uint8_t *heap_current; // HERE FOR TESTING PURPOSES, should be per process
+
+#include <vga.h>

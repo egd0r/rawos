@@ -1,10 +1,4 @@
-void cls (void);
-void itoa (char *buf, int base, int d);
-void putchar (int c);
-void printf(const char *format, ...);
-void kprintf(const char *format, ...);
-
-#include <multitasking.h>
+#pragma once
 
 #define KERNEL_VIRT 0xFFFFFFFF80000000
 #define VIDEO_ACTUAL 0xb8000+KERNEL_VIRT // Using vid base+virt since we're now in higher half ;)
@@ -38,3 +32,13 @@ static volatile unsigned char *video = (unsigned char *)VIDEO;
 
 static int xpos = 0;
 static int ypos = 0;
+
+#include <multitasking.h>
+
+void cls (void);
+void itoa (char *buf, int base, int d);
+void putchar (int c, TASK_LL *current_proc);
+void printf(const char *format, ...);
+void kprintf(const char *format, ...);
+
+#define putc(c) putchar(c, current_item)

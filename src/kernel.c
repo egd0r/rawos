@@ -21,8 +21,10 @@ void taskA() {
     // }
     int *x = (int *)new_malloc(sizeof(int)*3);
     x[0] = 5;
-    while (1)
-        printf("A");
+    while (1) {
+        printf("num: %d s", x[0]);
+        x[0]++;
+    }
 }
 
 void taskB() {
@@ -120,9 +122,9 @@ int kmain(unsigned long mbr_addr) {
     kprintf("SPINNING!\n"); 
     
     // printf("\nTesting page fault: %d\n", 14);
-    // create_task(&taskA);
-    // create_task(&taskB);
-    // create_task(&taskC);
+    create_task(&taskA);
+    create_task(&taskB);
+    create_task(&taskC);
     activate_interrupts(); // sti
     // CLI();
     
@@ -152,10 +154,10 @@ int kmain(unsigned long mbr_addr) {
     // Enter adds \0 and command gets set to handler?
 
     while (1) {
-    //   printf("kernel task");
-        char ch = getch();
+      printf("k2");
+        // char ch = getch();
         // if (ch == '\0') get_word();
-        if (ch != -1) printf("%c ", ch);
+        // if (ch != -1) printf("%c ", ch);
     }; //Spin on hang
     // Spawn init process
     
