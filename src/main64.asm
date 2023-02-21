@@ -153,6 +153,8 @@ extern test_state
 
 ;; Pushing register state to stack to avoid bad things!
 %macro pushreg 0
+push rsi
+push rdi
 push rbp
 push rbx
 push rdx
@@ -179,6 +181,8 @@ pop rcx
 pop rdx
 pop rbx
 pop rbp
+pop rdi
+pop rsi
 %endmacro
 
 %macro isr_err_stub 1

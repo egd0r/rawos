@@ -30,7 +30,7 @@ TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ym
 void newline(TASK_DISP_INFO *display_blk) {
     display_blk->xpos = display_blk->xmin;
     display_blk->ypos++;
-    if (display_blk->ypos >= display_blk->ymax)
+    if (display_blk->ypos > display_blk->ymax)
         display_blk->ypos = display_blk->ymin;
     return;
 }
@@ -38,6 +38,7 @@ void newline(TASK_DISP_INFO *display_blk) {
 // Interrupts can be called while this is here, changing current process running
 // That may be why it's fricking up. To prove this I will change PIT frequency and the error will be less extreme.
 void putchar (int c, TASK_LL *current_proc) {
+
   TASK_DISP_INFO *display_blk = &(current_proc->display_blk);
   if (c == '\n' || c == '\r')
     {
@@ -69,7 +70,7 @@ void putchar (int c, TASK_LL *current_proc) {
   // Update 0xb8000 if needed 
 
   display_blk->xpos++;
-  if (display_blk->xpos >= display_blk->xmax)
+  if (display_blk->xpos > display_blk->xmax)
     newline(display_blk);
 }
 

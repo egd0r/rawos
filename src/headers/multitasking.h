@@ -4,6 +4,7 @@
 #define MAX_TASKS_PER_BLOCK 128
 
 #include <interrupts.h>
+#include <io.h>
 
 #define HEAP_START 0x5000000
 #define STACK_SIZE 4096
@@ -47,6 +48,7 @@ typedef struct task_item_ll {
     uint8_t *stack;
 	uint8_t *heap_current;
 	uint64_t cr3;
+	IN_STREAM stream;
 	TASK_DISP_INFO display_blk;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;

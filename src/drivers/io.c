@@ -1,9 +1,12 @@
 #include <io.h>
+#include <multitasking.h>
 
-IN_STREAM stream = { .accessed = 0, .position = -1 };
+// IN_STREAM stream = { .accessed = 0, .position = -1 };
 int in_ = -1;
 
 char getch() {
+
+	IN_STREAM stream = current_display->stream;
 	if (stream.position == -1) {
 		return -1;
 	} else {

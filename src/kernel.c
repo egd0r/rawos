@@ -9,6 +9,15 @@
 #include <ata.h>
 #include <io.h>
 
+void sys_printf(const char *format, ...) {
+    // syscal_test(4, format);
+    asm __volatile__("int $0x80" : : "a" (4), "b" (format));
+}
+
+char sys_getch() {
+    return syscal_test(3);
+}
+
 /*
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
 
@@ -22,29 +31,43 @@ void taskA() {
     int *x = (int *)new_malloc(sizeof(int)*3);
     x[0] = 5;
     while (1) {
-        printf("num");
+        if (x[0] % 10000 == 0)
+        // sys_printf("%d\n", ms_since_boot);
+        // cls();
+
         x[0]++;
     }
 }
 
 void taskB() {
-    for (int i=0; i<COLUMNS * LINES; i++) {
-        printf("%d ", i%9);
-    }
-    while (1);
-    // while(1) {
-    //     printf("B");
+    // for (int i=0; i<COLUMNS * LINES; i++) {
+    //     printf("%d ", i%9);
     // }
+    // while (1);
+    while(1) {
+        sys_printf("B ");
+    }
 }
 
 void taskC() {
     // for (int i=0; i<100; i++) {
     //     i--;
     // }
+    // while (1) {
+    //     printf("C");
+    // }
+    int *x = (int *)new_malloc(sizeof(int)*3);
+    x[0] = 5;
+    int i=0;
+    char buffer[5];
+    char *temp = buffer;
     while (1) {
-        printf("C");
-    }
+        // printf("C");
+        x[0]++;
+    } 
 }
+
+
 
 void k_taskbar() {
     char *bar = "1|2|3|4|5";
@@ -55,7 +78,7 @@ void k_taskbar() {
         char c = *bar;
         int i=0;
         for (char *temp = bar; *temp != '\0'; c = temp, temp++, i++) {
-            *((uint16_t *)video + (i + 0)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
+            *((uint16_t *)video + (i + (LINES)*COLUMNS)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
             // *((uint16_t *)video + (1 + 0)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
         }
 
@@ -75,7 +98,7 @@ void k_taskbar() {
 */
 
 extern uint64_t RODATA_START;
-extern void syscal_test(int syscall_num);
+extern void syscal_test(int syscall_num, char *rbx);
 
 int kmain(unsigned long mbr_addr) {
     heap_current = heap_start;
@@ -97,7 +120,6 @@ int kmain(unsigned long mbr_addr) {
 
     create_task(0x00);
 
-    syscal_test(42);
     // Allocate at 0
     uint64_t ptr = kalloc_physical(1);
     ptr = kalloc_physical(1);
@@ -142,7 +164,7 @@ int kmain(unsigned long mbr_addr) {
     print_reg("L4 physical", main_cr3);
     print_reg("TA physical", taskA_phys);
 
-    printf("OK!\n");
+    kprintf("OK!\n");
     
     // printf("\nTesting page fault: %d\n", 14);
     cls();

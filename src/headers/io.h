@@ -1,4 +1,6 @@
+#pragma once
 #include <types.h>
+
 
 // Defining master/slave command and data lines
 #define PIC1_COMMAND 0x20

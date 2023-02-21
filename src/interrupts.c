@@ -122,7 +122,7 @@ void switch_screen(int PID) {
 		// Switching to new process display
 		load_cr3(current_display->cr3); 
 		// Copy current display to video out
-		memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 4096);//80*24*2); // 2 bytes per char
+		memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 80*24*2);//80*24*2); // 2 bytes per char
 		kprintf("SWITCHED to %d!", PID);
 	}
 	// Load current task again before return
@@ -184,10 +184,12 @@ void kb_handler() {
 			switch_screen(scode-1); // -2 to get the PID of process to switch to
 		}
 	} else if (scode < 0x81) {
-		// stream.position = (stream.position+1)%100;
-		// stream.buffer[stream.position] = kbd_us[scode];
 		// printf("%c ", kbd_us[scode]);
-		load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
+		IN_STREAM stream = current_display->stream;
+		stream.position = (stream.position+1)%100;
+		stream.buffer[stream.position] = kbd_us[scode];
+
+		load_cr3((uint64_t)current_display->cr3); 
 		putchar(kbd_us[scode], current_display);
 		load_cr3(current_item->cr3);
 
@@ -309,8 +311,8 @@ void idt_init() {
 	remapPIC();
 	
 	// PIT
-	// set_pit_freq(11932);
-	set_pit_freq(65536);
+	set_pit_freq(11932);
+	// set_pit_freq(65536);
 	//KB stuff
 	outb(PIC1_DATA, 0b11111100); // Enabling keyboard by unmasking correct line in PIC master
 	outb(PIC2_DATA, 0b11111111); 

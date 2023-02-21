@@ -4,15 +4,20 @@
 #include <types.h>
 
 void * syscall_handler(INT_FRAME frame) {
-    kprintf("ello there chappy\n");
-    kprintf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
+    // kprintf("ello there chappy\n");
+    // kprintf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
 
-    switch (frame.rax) {
+    void *ret;
+    // STI();
+
+
+    switch (frame.rdx) {
         case 4:
             printf(frame.rbx);
+
     }
 
-    return NULL;
+    // CLI();
 
 }
 

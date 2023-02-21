@@ -8,8 +8,8 @@
 
 
 void remapPIC();
-static inline void outb(uint16_t port, uint8_t val);
-static inline uint8_t inb(uint16_t port);
+void outb(uint16_t port, uint8_t val);
+uint8_t inb(uint16_t port);
 
 typedef struct {
 	uint16_t    isr_low;      // The lower 16 bits of the ISR's address
@@ -39,6 +39,8 @@ typedef struct {
 	uint64_t rax;
 	uint64_t rbx;
 	uint64_t rbp;
+	uint64_t rdi;
+	uint64_t rsi;
 	uint64_t err;
 	uint64_t rip;
 	uint64_t cs;

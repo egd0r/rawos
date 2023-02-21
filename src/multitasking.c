@@ -129,6 +129,8 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
 
     *((INT_FRAME *)stack_pos) = new_state;
 
+    allocate_here(rel_video);
+
     if (entry_point != 0x00)
         load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
 
@@ -181,6 +183,10 @@ int create_task(void *entry_point) {
         new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
     }
     new_task->switches = 0;
+
+    (new_task->stream).accessed = 0;
+    (new_task->stream).position = -1;
+
 
     // // Unmasking and setting as CR3 of new process
     // new_state.cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
