@@ -1,10 +1,11 @@
 #pragma once
 
 #define KERNEL_VIRT 0xFFFFFFFF80000000
-#define VIDEO_ACTUAL 0xb8000+KERNEL_VIRT // Using vid base+virt since we're now in higher half ;)
-#define VIDEO 0xb8000+KERNEL_VIRT // Using vid base+virt since we're now in higher half ;)
+#define VIDEO_ACTUAL 0xFFFFFFFF800b8000 // Using vid base+virt since we're now in higher half ;)
+#define VIDEO 0xFFFFFFFF800b8000 // Using vid base+virt since we're now in higher half ;)
 #define PROC_VIDEO HEAP_START
-static volatile unsigned char *video = (unsigned char *)VIDEO;
+#include <types.h>
+static volatile uint16_t *video = (uint16_t *)VIDEO;
 
 #define COLUMNS 80
 #define LINES 24
@@ -46,3 +47,14 @@ TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ym
 #define FULL_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS, 0, LINES);
 #define LH_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS/2, 0, LINES);
 #define RH_DISPLAY(curr) create_task_disp(curr, COLUMNS/2, COLUMNS, 0, LINES);
+
+typedef struct SCR_CHAR {
+    char ch;
+    char attribute;
+}__attribute__((packed)) sc_char;
+
+typedef struct SCREEN_O {
+    sc_char chars[COLUMNS*LINES];
+}__attribute__((packed)) screen;
+
+static volatile screen *rel_video = (screen *)0x5000000;

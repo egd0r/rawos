@@ -22,18 +22,19 @@ void taskA() {
     int *x = (int *)new_malloc(sizeof(int)*3);
     x[0] = 5;
     while (1) {
-        printf("num: %d s", x[0]);
+        printf("num");
         x[0]++;
     }
 }
 
 void taskB() {
-    // for (int i=0; i<100; i++) {
-    //     i--;
-    // }
-    while(1) {
-        printf("B");
+    for (int i=0; i<COLUMNS * LINES; i++) {
+        printf("%d ", i%9);
     }
+    while (1);
+    // while(1) {
+    //     printf("B");
+    // }
 }
 
 void taskC() {
@@ -42,6 +43,23 @@ void taskC() {
     // }
     while (1) {
         printf("C");
+    }
+}
+
+void k_taskbar() {
+    char *bar = "1|2|3|4|5";
+    int xpos_a = 0;
+    int ypos_a = 50;
+    while (1) {
+        // if (ms_since_boot % 2 == 0) {
+        char c = *bar;
+        int i=0;
+        for (char *temp = bar; *temp != '\0'; c = temp, temp++, i++) {
+            *((uint16_t *)video + (i + 0)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
+            // *((uint16_t *)video + (1 + 0)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
+        }
+
+        // }
     }
 }
 
@@ -120,19 +138,23 @@ int kmain(unsigned long mbr_addr) {
     // *((int *)0xb8900) = 0x00000000;
 
     kprintf("SPINNING!\n"); 
-    
-    // printf("\nTesting page fault: %d\n", 14);
-    create_task(&taskA);
-    create_task(&taskB);
-    create_task(&taskC);
-    activate_interrupts(); // sti
-    // CLI();
-    
     print_reg("RODATA", &RODATA_START);
     print_reg("L4 physical", main_cr3);
     print_reg("TA physical", taskA_phys);
 
     printf("OK!\n");
+    
+    // printf("\nTesting page fault: %d\n", 14);
+    cls();
+    create_task(&taskA);
+    create_task(&taskB);
+    create_task(&taskC);
+    create_task(&k_taskbar);
+    cls();
+    activate_interrupts(); // sti
+    // CLI();
+    
+    
 
 
     // Saves state on stack and selects a new process to run (sets current_item)
@@ -142,7 +164,7 @@ int kmain(unsigned long mbr_addr) {
     // switch_task(current_item->stack);
 
 
-    cls();
+    // cls();
     // extern uint64_t ms_since_boot;
     // while(ms_since_boot != 10000);
     // printf("%c ", getch());

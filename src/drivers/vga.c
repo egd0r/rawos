@@ -14,6 +14,7 @@ void cls (void) {
 
 TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax) {
     TASK_DISP_INFO ret; ret.xpos = xmin; ret.ypos = ymin; ret.xmin = xmin; ret.xmax = xmax; ret.ymin = ymin; ret.ymax = ymax;
+    ret.rel_video = (unsigned char *)HEAP_START;
     
     // if (curr != NULL) {
     //     // Can work on moving bytes over - not essential
@@ -26,29 +27,42 @@ TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ym
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */
 /*  Put the character C on the screen. */
+void newline(TASK_DISP_INFO *display_blk) {
+    display_blk->xpos = display_blk->xmin;
+    display_blk->ypos++;
+    if (display_blk->ypos >= display_blk->ymax)
+        display_blk->ypos = display_blk->ymin;
+    return;
+}
+// The problem with this is current proc is a pointer to heap space
+// Interrupts can be called while this is here, changing current process running
+// That may be why it's fricking up. To prove this I will change PIT frequency and the error will be less extreme.
 void putchar (int c, TASK_LL *current_proc) {
   TASK_DISP_INFO *display_blk = &(current_proc->display_blk);
   if (c == '\n' || c == '\r')
     {
-    newline:
-      display_blk->xpos = display_blk->xmin;
-      display_blk->ypos++;
-      if (display_blk->ypos >= display_blk->ymax)
-        display_blk->ypos = display_blk->ymin;
+      newline(display_blk);
       return;
     }
 
   // Need to be able to get current process information from shared process page
-  if ((current_proc->flags & DISPLAY_TRUE) == DISPLAY_TRUE) {
-    *(video + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
-    *(video + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+  if (current_proc->PID == current_display->PID) {
+    // *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
+    // *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+
+    (((screen *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+    (((screen *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+    // *((uint16_t *)(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2)) = *((uint16_t *)(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2));
+    // *(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
+    // *(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
     // *(video + (display_blk->xpos + display_blk->ypos)) = c & 0xFF;
     // *(video + (display_blk->xpos + display_blk->ypos) + 1) = ATT_LT_GREY;
     // *((uint16_t *)video + (display_blk->xpos + display_blk->ypos)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-  }
+  } 
+    (((screen *)rel_video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+    (((screen *)rel_video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+  
 
-  *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
-  *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
   // to check
 //   *(video + (xpos + ypos * COLUMNS) * 2) = (c | ATT_BLACK << 12 | ATT_LT_GREY << 8);
 
@@ -56,7 +70,7 @@ void putchar (int c, TASK_LL *current_proc) {
 
   display_blk->xpos++;
   if (display_blk->xpos >= display_blk->xmax)
-    goto newline;
+    newline(display_blk);
 }
 
 void kputchar (int c) {
@@ -70,8 +84,8 @@ void kputchar (int c) {
       return;
     }
 
-  *(video + (xpos + ypos * COLUMNS) * 2) = c & 0xFF;
-  *(video + (xpos + ypos * COLUMNS) * 2 + 1) = ATT_RED;
+    (((screen *)video)->chars)[(xpos + ypos * COLUMNS)].ch = (char)c;
+    (((screen *)video)->chars)[(xpos + ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_RED;
 
   xpos++;
   if (xpos >= COLUMNS)

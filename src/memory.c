@@ -572,7 +572,6 @@ void *create_new_heap_space() {
     tail_heap.prev=(chunk_n *)(newMemPtr);
     //Placing heap metadata
     *((chunk_n *)newMemPtr) = head_heap;
-    kprintf("test");
     *((chunk_n *)tailInsertion) = tail_heap;
     //Resetting pointer to final heap tail
     tail_of_last_heapchunk = tailInsertion;
@@ -591,8 +590,6 @@ void *create_new_heap_space() {
 //Has the ability to call mmap for allocations larger than those that are able to fit in the free chunks available.
 void *new_malloc(int bytes) {
 
-    kprintf("\n\n--- Running new_malloc function, attempting to create %d bytes ---\n", bytes);
-    
     //Initialising pointer to free space
     chunk_n *foundFree;
     //Free chunks can be greater than 8k in size from adjecent heap spaces

@@ -34,6 +34,7 @@ typedef struct TASK_DISPLAY_INFO {
 	int xmax;
 	int ymin;
 	int ymax;
+	unsigned char *rel_video;
 } TASK_DISP_INFO;
 
 
@@ -69,8 +70,7 @@ void unlock_scheduler();
 TASK_LL * schedule(INT_FRAME *curr_proc_state);
 
 TASK_LL * find_prev_task(int pid);
-
-#define TASK(pid) find_prev_task(pid)->next
+TASK_LL * TASK(int pid);
 
 
 extern TASK_LL *current_item; // Making current item global for TESTING purposes 

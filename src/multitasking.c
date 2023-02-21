@@ -221,6 +221,16 @@ int create_task(void *entry_point) {
     return;    
 }
 
+// Only available to interrupts
+TASK_LL * TASK(int pid) {
+    if (pid == current_item->PID) return current_item;
+
+    for (TASK_LL *temp = ready_start; temp != ready_end; temp=temp->next) {
+        if (temp->PID == pid) return temp;
+    }
+    return NULL;
+}
+
 TASK_LL * find_prev_task(int pid) {
     for (TASK_LL *temp = current_item; temp=temp->next; temp->PID != current_item->PID) {
         if (temp->next->PID == pid) {
