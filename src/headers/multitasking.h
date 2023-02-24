@@ -28,15 +28,7 @@ enum TASK_STATE {
 	READY
 };
 
-typedef struct TASK_DISPLAY_INFO {
-    int xpos;
-    int ypos;
-	int xmin;
-	int xmax;
-	int ymin;
-	int ymax;
-	unsigned char *rel_video;
-} TASK_DISP_INFO;
+
 
 
 typedef struct task_item_ll {
@@ -48,19 +40,26 @@ typedef struct task_item_ll {
     uint8_t *stack;
 	uint8_t *heap_current;
 	uint64_t cr3;
+	// SCREEN_O *screen;
+	int screen_id;
 	IN_STREAM stream;
-	TASK_DISP_INFO display_blk;
+	// TASK_DISP_INFO display_blk;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;
 
 // For organisation of chunks of tasks if needed
 typedef struct task_item_group {
-	TASK_LL *ready_start;
-	TASK_LL *ready_end;
-	TASK_LL *current_item;
+	int number_of_tasks;
+
+	TASK_LL *rdy_start;
+	TASK_LL *rdy_end;
+
+	TASK_LL *curr_item;
+	
 	TASK_LL *blocked;
-	TASK_LL *terminated_curr;
+	TASK_LL *trm_curr;
+
 } TASK_GRP;
 
 // Process management
@@ -75,9 +74,17 @@ TASK_LL * find_prev_task(int pid);
 TASK_LL * TASK(int pid);
 
 
-extern TASK_LL *current_item; // Making current item global for TESTING purposes 
-extern TASK_LL *current_display; // Making current item global for TESTING purposes 
+extern TASK_GRP init_task_grp;
+
+#define current_item init_task_grp.curr_item
+#define ready_start init_task_grp.rdy_start
+#define ready_end init_task_grp.rdy_end
+#define blocked_item init_task_grp.blocked
+#define terminated_curr init_task_grp.trm_curr
+#define TASK_COUNT init_task_grp.number_of_tasks
+
+
+// extern TASK_LL *current_item; // Making current item global for TESTING purposes 
+extern int current_display; // Making current item global for TESTING purposes 
 extern uint8_t *heap_start; // HERE FOR TESTING PURPOSES, should be per process
 extern uint8_t *heap_current; // HERE FOR TESTING PURPOSES, should be per process
-
-#include <vga.h>

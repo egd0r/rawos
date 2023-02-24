@@ -108,25 +108,25 @@ void allocate_here(uint64_t virt_addr) {
 extern uint64_t page_table_l4; // Kernel data
 void switch_screen(int PID) {
 
-	if (PID == current_display->PID) return;
-	// Selecting current process
-	// Return if current process is being displayed already
-	// Get task corresponding to PID passed
-	load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
-	TASK_LL *task_new = TASK(PID);
-	if (task_new != NULL && ((task_new->flags & DISPLAY_TRUE) != DISPLAY_TRUE)) {
-		// Accessing kernel structures, changing task displayed
-		current_display->flags &= (~DISPLAY_TRUE);
-		current_display = task_new;
-		current_display->flags |= DISPLAY_TRUE;
-		// Switching to new process display
-		load_cr3(current_display->cr3); 
-		// Copy current display to video out
-		memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 80*24*2);//80*24*2); // 2 bytes per char
-		kprintf("SWITCHED to %d!", PID);
-	}
-	// Load current task again before return
-	load_cr3(current_item->cr3);
+	// if (PID == current_display->PID) return;
+	// // Selecting current process
+	// // Return if current process is being displayed already
+	// // Get task corresponding to PID passed
+	// load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
+	// TASK_LL *task_new = TASK(PID);
+	// if (task_new != NULL && ((task_new->flags & DISPLAY_TRUE) != DISPLAY_TRUE)) {
+	// 	// Accessing kernel structures, changing task displayed
+	// 	current_display->flags &= (~DISPLAY_TRUE);
+	// 	current_display = task_new;
+	// 	current_display->flags |= DISPLAY_TRUE;
+	// 	// Switching to new process display
+	// 	load_cr3(current_display->cr3); 
+	// 	// Copy current display to video out
+	// 	memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 80*24*2);//80*24*2); // 2 bytes per char
+	// 	kprintf("SWITCHED to %d!", PID);
+	// }
+	// // Load current task again before return
+	// load_cr3(current_item->cr3);
 }
 
 int kbd_us [128] =
@@ -185,13 +185,14 @@ void kb_handler() {
 		}
 	} else if (scode < 0x81) {
 		// printf("%c ", kbd_us[scode]);
-		IN_STREAM stream = current_display->stream;
-		stream.position = (stream.position+1)%100;
-		stream.buffer[stream.position] = kbd_us[scode];
+		// IN_STREAM stream = current_display->stream;
+		// stream.position = (stream.position+1)%100;
+		// stream.buffer[stream.position] = kbd_us[scode];
 
-		load_cr3((uint64_t)current_display->cr3); 
-		putchar(kbd_us[scode], current_display);
-		load_cr3(current_item->cr3);
+		// load_cr3((uint64_t)current_display->cr3); 
+		// putchar(kbd_us[scode], current_display);
+		putchar_current(kbd_us[scode]);
+		// load_cr3(current_item->cr3);
 
 		// Backspace
 		// Call vga.rem
@@ -244,18 +245,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		print_reg_state(*frame);
 		__asm__ volatile ("hlt");
 	} else if (frame->vector == 0x0E) {
-		// if (arg > heap_current || arg < heap_start) return;
-		// kprintf("Page fault");
-		// __asm__ volatile ("hlt");
-		/*
-			Pre-reqs for interrupt based physical memory allocation:
-			-> Add kernel structs to specific page and copy on create
-			-> 
-		*/
-
 		allocate_here(arg);
-
-		// Memory access is re-run
 	} else if (frame->vector == 0x21) {
 		// Caused TF -> GPF
 		// if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))

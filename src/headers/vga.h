@@ -31,31 +31,30 @@ static volatile uint16_t *video = (uint16_t *)VIDEO;
 #define ATT_LT_BROWN   0xE
 #define ATT_WHITE      0xF
 
+#define MAX_CONTAINER_SIZE 0x4
+#define MAX_SCREEN_NO COLUMNS
+
 static int xpos = 0;
 static int ypos = 0;
 
+#include <display.h>
 #include <multitasking.h>
 
 void cls (void);
 void itoa (char *buf, int base, int d);
-void putchar (int c, TASK_LL *current_proc);
+void putchar (int c, int screen_id, int cont_id);
 void printf(const char *format, ...);
 void kprintf(const char *format, ...);
-TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax);
+// TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax);
 
 // #define putc(c) putchar(c, current_item)
-#define FULL_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS, 0, LINES);
-#define LH_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS/2, 0, LINES);
-#define RH_DISPLAY(curr) create_task_disp(curr, COLUMNS/2, COLUMNS, 0, LINES);
+// #define FULL_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS, 0, LINES);
+// #define LH_DISPLAY(curr) create_task_disp(curr, 0, COLUMNS/2, 0, LINES);
+// #define RH_DISPLAY(curr) create_task_disp(curr, COLUMNS/2, COLUMNS, 0, LINES);
 
-typedef struct SCR_CHAR {
-    char ch;
-    char attribute;
-}__attribute__((packed)) sc_char;
 
-typedef struct SCREEN_O {
-    sc_char chars[COLUMNS*LINES];
-    struct SCREEN_O *next;
-}__attribute__((packed)) screen;
 
-static volatile screen *rel_video = (screen *)0x5000000;
+
+// static volatile SCREEN_O *rel_video = (SCREEN_O *)0x5000000;
+
+extern void k_taskbar();

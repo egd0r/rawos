@@ -28,11 +28,13 @@ void taskA() {
     // for (int i=0; i<100; i++) {
     //     i--;
     // }
+    // int *test = new_malloc(sizeof(int)*5);
+    // new_free(test);
     int *x = (int *)new_malloc(sizeof(int)*3);
     x[0] = 5;
     while (1) {
-        if (x[0] % 10000 == 0)
-        // sys_printf("%d\n", ms_since_boot);
+        // if (x[0] % 10000 == 0)
+        sys_printf("A");
         // cls();
 
         x[0]++;
@@ -44,6 +46,8 @@ void taskB() {
     //     printf("%d ", i%9);
     // }
     // while (1);
+    int *test = new_malloc(sizeof(int)*5);
+    test[0] = 5;
     while(1) {
         sys_printf("B ");
     }
@@ -56,35 +60,18 @@ void taskC() {
     // while (1) {
     //     printf("C");
     // }
-    int *x = (int *)new_malloc(sizeof(int)*3);
-    x[0] = 5;
-    int i=0;
-    char buffer[5];
-    char *temp = buffer;
+    // int *x = (int *)new_malloc(sizeof(int)*3);
+    // x[0] = 5;
+    // int i=0;
+    // char buffer[5];
+    // char *temp = buffer;
     while (1) {
-        // printf("C");
-        x[0]++;
+        sys_printf("C");
+        // x[0]++;
     } 
 }
 
 
-
-void k_taskbar() {
-    char *bar = "1|2|3|4|5";
-    int xpos_a = 0;
-    int ypos_a = 50;
-    while (1) {
-        // if (ms_since_boot % 2 == 0) {
-        char c = *bar;
-        int i=0;
-        for (char *temp = bar; *temp != '\0'; c = temp, temp++, i++) {
-            *((uint16_t *)video + (i + (LINES)*COLUMNS)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-            // *((uint16_t *)video + (1 + 0)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-        }
-
-        // }
-    }
-}
 
 // extern void switch_task();
 
@@ -167,11 +154,12 @@ int kmain(unsigned long mbr_addr) {
     kprintf("OK!\n");
     
     // printf("\nTesting page fault: %d\n", 14);
+    printf("Test");
     cls();
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
-    create_task(&k_taskbar);
+    // create_task(&k_taskbar);
     cls();
     activate_interrupts(); // sti
     // CLI();

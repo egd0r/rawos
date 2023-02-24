@@ -2,23 +2,21 @@
 #include <multitasking.h>
 #include <memory.h>
 
+#include <vga.h>
+
 #define VIDEO_MEM_PAGES 1
 
 // Global variables
-TASK_LL *ready_start = NULL;
-TASK_LL *ready_end = NULL;
 
-TASK_LL *blocked = NULL;
 
-TASK_LL *current_item = NULL;
-TASK_LL *current_display = NULL;
+int current_display = 0;
 
-TASK_LL *terminated_curr = NULL;
+TASK_GRP init_task_grp = {0};
 
 uint8_t *heap_start = 0x0005000000;
 uint8_t *heap_current;
 
-int PID_COUNTER = 1;
+int PID_COUNTER = 2;
 int irq_disables = 0;
 
 void lock_scheduler() {
@@ -129,7 +127,7 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
 
     *((INT_FRAME *)stack_pos) = new_state;
 
-    allocate_here(rel_video);
+    // allocate_here(rel_video);
 
     if (entry_point != 0x00)
         load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
@@ -142,8 +140,11 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     Places new task at end of queue
 */
 extern uint64_t page_table_l3; // Kernel data
-int create_task(void *entry_point) {
+int create_task(void *entry_point/*, void *screen_create_function*/) {
     // Allocating new page for L4 table
+    
+    // Assert screen create
+
     TASK_LL *new_task = kp_alloc(PAGE_DIR_VIRT, 1);
 
     if (entry_point != 0x00) {
@@ -157,54 +158,30 @@ int create_task(void *entry_point) {
     } else {
         new_task->cr3 = (uint64_t *)((uint64_t)(&page_table_l4)&0xFFFFF);
     }
-
-    // TASK_LL *new_task = new_malloc(sizeof(TASK_LL));
-    // Create a page for each new task
     
     INT_FRAME new_state = {0};
 
-
-    // new_task->stack = new_malloc(STACK_SIZE); // sbrk(STACK_SIZE);
-    //Pointing stack to end
-    // new_task->stack = &((new_task->stack)[STACK_SIZE-1]);
-
     new_task->stack = place_state(new_task->cr3, entry_point, new_task);
 
-    (new_task->display_blk) = FULL_DISPLAY(NULL);
+    // (new_task->display_blk) = FULL_DISPLAY(NULL);
 
     // FILL VALUES
+    // Place important structures inside 'user space'
     if (entry_point == 0x00) {
-        new_task->PID = 0;
+        new_task->PID = 1;
         new_task->flags |= DISPLAY_TRUE;
         new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
-        current_display = new_task;
+        current_display = new_task->PID;
     } else { 
         new_task->PID = PID_COUNTER++;
         new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
     }
     new_task->switches = 0;
+    
+    new_task->screen_id = new_disp(0, new_task->PID, 0, COLUMNS, 0, LINES);
 
     (new_task->stream).accessed = 0;
     (new_task->stream).position = -1;
-
-
-    // // Unmasking and setting as CR3 of new process
-    // new_state.cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
-    // new_state.vector = 0x20;
-    // new_state.rip = (uint64_t)entry_point;
-    // new_state.eflags = 0x202;
-
-    // new_state.r15 = 0x69;
-
-    // // This code selector is what can take processor into ring 3
-    // if (entry_point == 0x00) new_state.cs = 0x08;
-    // else new_state.cs = 0x08; // Test without changing CS
-    // new_state.rsp = new_task->stack; //
-    // new_state.rbp = 0;
-
-    // new_task->stack -= sizeof(INT_FRAME);
-    // *((INT_FRAME *)new_task->stack) = new_state;
-
 
     new_task->next = new_task;
     new_task->prev = new_task;
@@ -223,6 +200,7 @@ int create_task(void *entry_point) {
     }
 
     kprintf("Created a new task with PID %d\n", new_task->PID);    
+    init_task_grp.number_of_tasks++;
 
     return;    
 }
@@ -254,7 +232,7 @@ int block_task(int pid) {
     // Remove from ready
     remove_from_end(ready_start, ready_end, task);
     // Add to blocked
-    add_to_circular_q(blocked, task);
+    add_to_circular_q(blocked_item, task);
 }
 
 

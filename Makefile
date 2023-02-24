@@ -15,6 +15,7 @@ kernel:
 	gcc $(CFLAGS) -c $(SRCPATH)/paging.c -o $(OBJPATH)/paging.o
 	gcc $(CFLAGS) -c $(SRCPATH)/memory.c -o $(OBJPATH)/memory.o
 	gcc $(CFLAGS) -c $(SRCPATH)/multitasking.c -o $(OBJPATH)/multitasking.o
+	gcc $(CFLAGS) -c $(SRCPATH)/display.c -o $(OBJPATH)/display.o
 	gcc $(CFLAGS) -c $(SRCPATH)/gdt.c -o $(OBJPATH)/gdt.o
 	gcc $(CFLAGS) -c $(SRCPATH)/syscalls.c -o $(OBJPATH)/syscalls.o
 	gcc $(CFLAGS) -c $(SRCPATH)/drivers/vga.c -o $(OBJPATH)/vga.o

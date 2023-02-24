@@ -1,6 +1,52 @@
 #include <stdarg.h>
 #include <vga.h>
 
+// Array of screens defined
+
+// typedef struct {
+//     SCR_CHAR ch[COLUMNS];
+// } TASK_BAR;
+// void k_taskbar() {
+//     char *bar = "1|2|3|4|5";
+//     int xpos_a = 0;
+//     int ypos_a = 50;
+
+//     TASK_BAR bar = 0; 
+
+//     int task_number = 0;
+//     // Get number of processes, has it changed?
+//     // Get current process, has it changed?
+
+//     while (1) {        
+//         // Refresh task list
+//         for (int i=0; i<COLUMNS; i++) {
+//             bar.ch = {0};
+//             if ((TASK_LL *ret = TASK(i)) != NULL) {
+//                 SCR_CHAR new_char = { 0 };
+                
+//                 bar.ch[ret->PID] = new_char;
+//             }
+
+//         }
+        
+//         // if (current_display != temp_curr_display) {
+//         //     // Change colour
+//         // }
+
+//         // Draw screen
+//         // vga putchar should take SCR_CHAR to print
+        
+//         char c = *bar;
+//         int i=0;
+//         for (char *temp = bar; *temp != '\0'; c = temp, temp++, i++) {
+//             *((uint16_t *)video + (i + (LINES)*COLUMNS)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
+//             // *((uint16_t *)video + (1 + 0)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
+//         }
+
+//         // }
+//     }
+// }
+
 void cls (void) {
   xpos = 0; ypos = 0;
   int i;
@@ -12,16 +58,18 @@ void cls (void) {
 
 }
 
-TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax) {
-    TASK_DISP_INFO ret; ret.xpos = xmin; ret.ypos = ymin; ret.xmin = xmin; ret.xmax = xmax; ret.ymin = ymin; ret.ymax = ymax;
-    ret.rel_video = (unsigned char *)HEAP_START;
-    
-    // if (curr != NULL) {
-    //     // Can work on moving bytes over - not essential
-    // }
 
-    return ret;
-}
+
+// TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax) {
+//     TASK_DISP_INFO ret; ret.xpos = xmin; ret.ypos = ymin; ret.xmin = xmin; ret.xmax = xmax; ret.ymin = ymin; ret.ymax = ymax;
+//     ret.rel_video = (unsigned char *)HEAP_START;
+    
+//     // if (curr != NULL) {
+//     //     // Can work on moving bytes over - not essential
+//     // }
+
+//     return ret;
+// }
 
 /*  Convert the integer D to a string and save the string in BUF. If
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
@@ -30,48 +78,58 @@ TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ym
 void newline(TASK_DISP_INFO *display_blk) {
     display_blk->xpos = display_blk->xmin;
     display_blk->ypos++;
-    if (display_blk->ypos > display_blk->ymax)
+    if (display_blk->ypos >= display_blk->ymax)
         display_blk->ypos = display_blk->ymin;
     return;
 }
-// The problem with this is current proc is a pointer to heap space
-// Interrupts can be called while this is here, changing current process running
-// That may be why it's fricking up. To prove this I will change PIT frequency and the error will be less extreme.
-void putchar (int c, TASK_LL *current_proc) {
 
-  TASK_DISP_INFO *display_blk = &(current_proc->display_blk);
-  if (c == '\n' || c == '\r')
+void putchar_current(int c) {
+    putchar(c, current_screen, screen_arr[current_screen].selected_cont);
+}
+
+void putchar_proc(int c, int pid) {
+    for (int i=1; i<no_screens; i++) {
+        SCREEN_O curr = screen_arr[i];
+        for (int ii=0; ii<curr.cont_size; ii++) {
+            CONTAINER cont = curr.conts[ii];
+            if (cont.pid == pid) {
+                putchar(c, i, ii);
+                return;
+            }
+        }
+    }
+}
+
+void putchar (int c, int screen_id, int cont_id) {
+    // assert(screen_id <= MAX_SCREEN_NO);
+    SCREEN_O *sel_screen = &(screen_arr[screen_id]);
+    if (sel_screen->id == 0) return;
+    // assert(cont_id <= MAX_CONTAINER_SIZE);
+
+    CONTAINER *sel_container = &(sel_screen->conts[cont_id]);
+
+    // if (sel_container == NULL) return;
+
+    TASK_DISP_INFO *display_blk = &(sel_container->display_blk);
+
+    if (c == '\n' || c == '\r')
     {
-      newline(display_blk);
-      return;
+        newline(display_blk);
+        return;
     }
 
-  // Need to be able to get current process information from shared process page
-  if (current_proc->PID == current_display->PID) {
-    // *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
-    // *(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
+    if (current_display == sel_screen->id) {
+        (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+        (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+    } 
 
-    (((screen *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-    (((screen *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
-    // *((uint16_t *)(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2)) = *((uint16_t *)(((unsigned char *)HEAP_START) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2));
-    // *(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2) = c & 0xFF;
-    // *(((unsigned char *)video) + (display_blk->xpos + display_blk->ypos * COLUMNS) * 2 + 1) = ATT_LT_GREY;
-    // *(video + (display_blk->xpos + display_blk->ypos)) = c & 0xFF;
-    // *(video + (display_blk->xpos + display_blk->ypos) + 1) = ATT_LT_GREY;
-    // *((uint16_t *)video + (display_blk->xpos + display_blk->ypos)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-  } 
-    (((screen *)rel_video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-    (((screen *)rel_video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
-  
+    (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+    (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
 
-  // to check
-//   *(video + (xpos + ypos * COLUMNS) * 2) = (c | ATT_BLACK << 12 | ATT_LT_GREY << 8);
 
-  // Update 0xb8000 if needed 
-
-  display_blk->xpos++;
-  if (display_blk->xpos > display_blk->xmax)
-    newline(display_blk);
+    display_blk->xpos++;
+    if (display_blk->xpos >= display_blk->xmax)
+        newline(display_blk);
 }
 
 void kputchar (int c) {
@@ -85,8 +143,8 @@ void kputchar (int c) {
       return;
     }
 
-    (((screen *)video)->chars)[(xpos + ypos * COLUMNS)].ch = (char)c;
-    (((screen *)video)->chars)[(xpos + ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_RED;
+    (((SCREEN_O *)video)->chars)[(xpos + ypos * COLUMNS)].ch = (char)c;
+    (((SCREEN_O *)video)->chars)[(xpos + ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_RED;
 
   xpos++;
   if (xpos >= COLUMNS)
@@ -153,7 +211,7 @@ void printf(const char *format, ...) {
 
             switch ( *string ) {
                 case 'c':
-                    putchar(dec, (TASK_LL *)PROCESS_CONT_ADDR);
+                    putchar_proc(dec, current_item->PID);
                     string++;
                     continue;
                     break;
@@ -174,7 +232,7 @@ void printf(const char *format, ...) {
                     base = 16;
                     break;
                 default:
-                    putchar(*string, (TASK_LL *)PROCESS_CONT_ADDR);
+                    putchar_proc(*string, current_item->PID);
             }
 
             if (base != 0) {
@@ -182,15 +240,15 @@ void printf(const char *format, ...) {
             }
 
             for (; padding > str_len(str); padding--)
-                putchar(paddingChar, (TASK_LL *)PROCESS_CONT_ADDR);
+                putchar_proc(paddingChar, current_item->PID);
 
             for (; *str != '\0'; str++)
-                putchar(*str, (TASK_LL *)PROCESS_CONT_ADDR);
+                putchar_proc(*str, current_item->PID);
 
             string++;
         }
 
-        putchar(*string, (TASK_LL *)PROCESS_CONT_ADDR);
+        putchar_proc(*string, current_item->PID);
     }
 
     return;
