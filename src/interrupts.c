@@ -167,6 +167,7 @@ int kbd_us [128] =
 extern IN_STREAM stream;
 extern char in_;
 int alt_pressed = 0;
+extern int swap_screens(int new_screen_id);
 void kb_handler() {
 	uint8_t scode = inb(PS2_PORT);
 	// kprintf("%x ", scode);
@@ -178,11 +179,13 @@ void kb_handler() {
 		alt_pressed = 0;
 		// kprintf("ALT released!");
 	} else if (alt_pressed == 1 && scode < 0x81) {
+		load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
 		if (scode == 11) {
-			switch_screen(0);
+			swap_screens(1);
 		} else {
-			switch_screen(scode-1); // -2 to get the PID of process to switch to
+			swap_screens(scode-1); // -2 to get the PID of process to switch to
 		}
+		load_cr3(current_item->cr3);
 	} else if (scode < 0x81) {
 		// printf("%c ", kbd_us[scode]);
 		// IN_STREAM stream = current_display->stream;

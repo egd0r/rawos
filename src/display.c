@@ -11,6 +11,16 @@ SCREEN_O screen_arr[COLUMNS] = { 0 };
 
 int current_screen = 1;
 
+int swap_screens(int new_screen_id) {
+    if (current_screen == new_screen_id) return -1;
+    if (new_screen_id > no_screens || new_screen_id == 0) return -1;
+
+    SCR_CHAR *buffer = &(screen_arr[new_screen_id].chars);
+    memcpy(buffer, VIDEO_ACTUAL, sizeof(screen_arr[new_screen_id].chars));
+
+    current_screen = new_screen_id;
+}
+
 // Returns ID of new screen created
 int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     if (curr == -1) return 0; // Proc wants to output to 0
