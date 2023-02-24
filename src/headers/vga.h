@@ -37,12 +37,12 @@ static volatile uint16_t *video = (uint16_t *)VIDEO;
 static int xpos = 0;
 static int ypos = 0;
 
-#include <display.h>
 #include <multitasking.h>
+#include <display.h>
 
 void cls (void);
 void itoa (char *buf, int base, int d);
-void putchar (int c, int screen_id, int cont_id);
+void putchar (SCR_CHAR c, int screen_id, int cont_id);
 void printf(const char *format, ...);
 void kprintf(const char *format, ...);
 extern void k_taskbar();

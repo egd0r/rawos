@@ -106,29 +106,6 @@ void allocate_here(uint64_t virt_addr) {
 
 
 extern uint64_t page_table_l4; // Kernel data
-void switch_screen(int PID) {
-
-	// if (PID == current_display->PID) return;
-	// // Selecting current process
-	// // Return if current process is being displayed already
-	// // Get task corresponding to PID passed
-	// load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
-	// TASK_LL *task_new = TASK(PID);
-	// if (task_new != NULL && ((task_new->flags & DISPLAY_TRUE) != DISPLAY_TRUE)) {
-	// 	// Accessing kernel structures, changing task displayed
-	// 	current_display->flags &= (~DISPLAY_TRUE);
-	// 	current_display = task_new;
-	// 	current_display->flags |= DISPLAY_TRUE;
-	// 	// Switching to new process display
-	// 	load_cr3(current_display->cr3); 
-	// 	// Copy current display to video out
-	// 	memcpy((uint8_t *)HEAP_START, (uint8_t *)VIDEO_ACTUAL, 80*24*2);//80*24*2); // 2 bytes per char
-	// 	kprintf("SWITCHED to %d!", PID);
-	// }
-	// // Load current task again before return
-	// load_cr3(current_item->cr3);
-}
-
 int kbd_us [128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',   
@@ -187,14 +164,18 @@ void kb_handler() {
 		}
 		load_cr3(current_item->cr3);
 	} else if (scode < 0x81) {
-		// printf("%c ", kbd_us[scode]);
-		// IN_STREAM stream = current_display->stream;
-		// stream.position = (stream.position+1)%100;
-		// stream.buffer[stream.position] = kbd_us[scode];
+		// printf("%c ", kbd_us[scode]); 
+		// CONTAINER *proc_cont = find_container(current_item->PID);
+        // if (proc_cont == NULL) return;
+
+        // IN_STREAM *stream = &(proc_cont->stream);
+
+		// stream->position = (stream->position+1)%100;
+		// stream->buffer[stream->position] = kbd_us[scode];
 
 		// load_cr3((uint64_t)current_display->cr3); 
 		// putchar(kbd_us[scode], current_display);
-		putchar_current(kbd_us[scode]);
+		// putchar_current(kbd_us[scode]);
 		// load_cr3(current_item->cr3);
 
 		// Backspace

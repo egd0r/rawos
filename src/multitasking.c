@@ -162,7 +162,6 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
 
     new_task->stack = place_state(new_task->cr3, entry_point, new_task);
 
-    // (new_task->display_blk) = FULL_DISPLAY(NULL);
 
     // FILL VALUES
     // Place important structures inside 'user space'
@@ -170,14 +169,15 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
         new_task->PID = 1;
         new_task->flags |= DISPLAY_TRUE;
         new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
-        current_display = new_task->PID;
+        current_screen = new_task->PID;
     } else { 
         new_task->PID = PID_COUNTER++;
         new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
     }
     new_task->switches = 0;
     
-    new_task->screen_id = new_disp(0, new_task->PID, 0, COLUMNS, 0, LINES);
+    if (entry_point != k_taskbar) new_task->screen_id = FULL_DISPLAY(new_task->PID);
+    else new_task->screen_id = taskbar_disp(new_task->PID);
 
     new_task->next = new_task;
     new_task->prev = new_task;

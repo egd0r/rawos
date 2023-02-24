@@ -8,15 +8,21 @@
 //For testing
 #include <ata.h>
 #include <io.h>
+#include <stdarg.h>
 
 void sys_printf(const char *format, ...) {
     // syscal_test(4, format);
-    asm __volatile__("int $0x80" : : "a" (4), "b" (format));
+    va_list arg;
+    va_start(arg, format);
+    char *arg_o = va_arg(arg, char *);
+    asm __volatile__("int $0x80" : : "a" (4), "b" (format), "c" (arg_o));
+    va_end(arg);
 }
 
-char sys_getch() {
-    return syscal_test(3);
-}
+// char sys_getch(char *buffer) {
+//     return syscal_test(3);
+//     asm __volatile__("int $0x80" : : "a" (3), "b" (buffer));
+// }
 
 /*
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
@@ -159,7 +165,7 @@ int kmain(unsigned long mbr_addr) {
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
-    // create_task(&k_taskbar);
+    create_task(&k_taskbar);
     cls();
     activate_interrupts(); // sti
     // CLI();

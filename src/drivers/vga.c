@@ -1,51 +1,7 @@
 #include <stdarg.h>
 #include <vga.h>
 
-// Array of screens defined
 
-// typedef struct {
-//     SCR_CHAR ch[COLUMNS];
-// } TASK_BAR;
-// void k_taskbar() {
-//     char *bar = "1|2|3|4|5";
-//     int xpos_a = 0;
-//     int ypos_a = 50;
-
-//     TASK_BAR bar = 0; 
-
-//     int task_number = 0;
-//     // Get number of processes, has it changed?
-//     // Get current process, has it changed?
-
-//     while (1) {        
-//         // Refresh task list
-//         for (int i=0; i<COLUMNS; i++) {
-//             bar.ch = {0};
-//             if ((TASK_LL *ret = TASK(i)) != NULL) {
-//                 SCR_CHAR new_char = { 0 };
-                
-//                 bar.ch[ret->PID] = new_char;
-//             }
-
-//         }
-        
-//         // if (current_display != temp_curr_display) {
-//         //     // Change colour
-//         // }
-
-//         // Draw screen
-//         // vga putchar should take SCR_CHAR to print
-        
-//         char c = *bar;
-//         int i=0;
-//         for (char *temp = bar; *temp != '\0'; c = temp, temp++, i++) {
-//             *((uint16_t *)video + (i + (LINES)*COLUMNS)) = *temp | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-//             // *((uint16_t *)video + (1 + 0)) = c | ATT_LT_GREY << 12 | ATT_BLACK << 8;
-//         }
-
-//         // }
-//     }
-// }
 
 void cls (void) {
   xpos = 0; ypos = 0;
@@ -67,13 +23,36 @@ void cls (void) {
 void newline(TASK_DISP_INFO *display_blk) {
     display_blk->xpos = display_blk->xmin;
     display_blk->ypos++;
-    if (display_blk->ypos >= display_blk->ymax)
+    if (display_blk->ypos > display_blk->ymax)
         display_blk->ypos = display_blk->ymin;
     return;
 }
 
+SCR_CHAR to_char_mod(int c, int ATTRIBUTES) {
+    SCR_CHAR ret;
+    ret.ch = c;
+    ret.attribute = ATTRIBUTES;
+    return ret;
+}
+
+#define DEFAULT_CHAR(c) to_char_mod(c, ATT_BLACK << 4 | ATT_LT_GREY)
+#define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
+
 void putchar_current(int c) {
-    putchar(c, current_screen, screen_arr[current_screen].selected_cont);
+    putchar(DEFAULT_CHAR(c), current_screen, screen_arr[current_screen].selected_cont);
+}
+
+// Writes to every buffer containing process
+void putchar_variable(SCR_CHAR char_mod, int pid) {
+    for (int i=1; i<no_screens; i++) {
+        SCREEN_O curr = screen_arr[i];
+        for (int ii=0; ii<curr.cont_size; ii++) {
+            CONTAINER cont = curr.conts[ii];
+            if (cont.pid == pid) {
+                putchar(char_mod, i, ii);
+            }
+        }
+    }
 }
 
 void putchar_proc(int c, int pid) {
@@ -82,14 +61,14 @@ void putchar_proc(int c, int pid) {
         for (int ii=0; ii<curr.cont_size; ii++) {
             CONTAINER cont = curr.conts[ii];
             if (cont.pid == pid) {
-                putchar(c, i, ii);
-                return;
+                putchar(DEFAULT_CHAR(c), i, ii);
+                return; // Not needed
             }
         }
     }
 }
 
-void putchar (int c, int screen_id, int cont_id) {
+void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {
     // assert(screen_id <= MAX_SCREEN_NO);
     SCREEN_O *sel_screen = &(screen_arr[screen_id]);
     if (sel_screen->id == 0) return;
@@ -101,19 +80,24 @@ void putchar (int c, int screen_id, int cont_id) {
 
     TASK_DISP_INFO *display_blk = &(sel_container->display_blk);
 
+    char c = char_mod.ch;
+
     if (c == '\n' || c == '\r')
     {
         newline(display_blk);
         return;
     }
 
-    if (current_display == sel_screen->id) {
-        (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-        (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+    if (current_screen == sel_screen->id) {
+        // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+        // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+        (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)] = char_mod;
     } 
 
-    (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-    (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+    // (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
+    // (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
+
+    (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)] = char_mod;
 
 
     display_blk->xpos++;
@@ -191,6 +175,8 @@ void printf(const char *format, ...) {
             int dec = 0;
             int base = 0;
             char *str;
+            SCR_CHAR *str_mod;
+
 
             char paddingChar;
             if ( *string == 'b' || *string == 'd' || *string == 'o' || *string == 'x' || *string == 'c' ) {
@@ -220,6 +206,13 @@ void printf(const char *format, ...) {
                 case 'x':
                     base = 16;
                     break;
+                case '?':
+                    SCR_CHAR *str_mod = va_arg(arg, SCR_CHAR *);
+                    for (SCR_CHAR *temp=str_mod; temp->ch != '\0'; temp++) {
+                        putchar_variable(*temp, current_item->PID);
+                    }
+                    string++;
+                    continue;
                 default:
                     putchar_proc(*string, current_item->PID);
             }

@@ -6,6 +6,7 @@ int in_ = -1;
 
 char getch() {
 
+	// IN_STREAM stream = current_display->stream;
 	IN_STREAM stream;
 	if (stream.position == -1) {
 		return -1;

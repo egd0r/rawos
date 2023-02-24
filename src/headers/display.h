@@ -1,6 +1,12 @@
 #pragma once
 #include <types.h>
 #include <multitasking.h>
+
+typedef struct {
+    char ch;
+    char attribute;
+}__attribute__((packed)) SCR_CHAR;
+
 #include <vga.h>
 
 typedef struct TASK_DISPLAY_INFO {
@@ -10,13 +16,10 @@ typedef struct TASK_DISPLAY_INFO {
 	int xmax;
 	int ymin;
 	int ymax;
-	unsigned char *rel_video;
+	// unsigned char *rel_video;
 } TASK_DISP_INFO;
 
-typedef struct {
-    char ch;
-    char attribute;
-}__attribute__((packed)) SCR_CHAR;
+
 
 // Per process container
 typedef struct CONT_O{
@@ -27,7 +30,7 @@ typedef struct CONT_O{
 } CONTAINER;
 
 typedef struct SCREEN {
-    SCR_CHAR chars[COLUMNS*LINES];
+    SCR_CHAR chars[COLUMNS*(LINES+1)];
     int id;
     int selected_cont;
     int cont_size;
@@ -36,6 +39,9 @@ typedef struct SCREEN {
 }__attribute__((packed)) SCREEN_O;
 
 int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax);
+int FULL_DISPLAY(int pid);
+int taskbar_disp(int pid);
+
 
 void attach_proc_to_screen(TASK_LL *proc, int container_id);
 void remove_proc_from_screen(TASK_LL *proc, int container_id);
