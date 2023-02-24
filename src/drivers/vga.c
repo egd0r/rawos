@@ -60,17 +60,6 @@ void cls (void) {
 
 
 
-// TASK_DISP_INFO create_task_disp(TASK_DISP_INFO *curr, int xmin, int xmax, int ymin, int ymax) {
-//     TASK_DISP_INFO ret; ret.xpos = xmin; ret.ypos = ymin; ret.xmin = xmin; ret.xmax = xmax; ret.ymin = ymin; ret.ymax = ymax;
-//     ret.rel_video = (unsigned char *)HEAP_START;
-    
-//     // if (curr != NULL) {
-//     //     // Can work on moving bytes over - not essential
-//     // }
-
-//     return ret;
-// }
-
 /*  Convert the integer D to a string and save the string in BUF. If
    BASE is equal to ’d’, interpret that D is decimal, and if BASE is
    equal to ’x’, interpret that D is hexadecimal. */

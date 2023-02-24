@@ -30,7 +30,6 @@ enum TASK_STATE {
 
 
 
-
 typedef struct task_item_ll {
     int PID;
 	int flags;
@@ -40,10 +39,7 @@ typedef struct task_item_ll {
     uint8_t *stack;
 	uint8_t *heap_current;
 	uint64_t cr3;
-	// SCREEN_O *screen;
 	int screen_id;
-	IN_STREAM stream;
-	// TASK_DISP_INFO display_blk;
 	struct task_item_ll *next;
 	struct task_item_ll *prev;
 } TASK_LL;

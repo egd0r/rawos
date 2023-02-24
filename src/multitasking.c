@@ -127,7 +127,6 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
 
     *((INT_FRAME *)stack_pos) = new_state;
 
-    // allocate_here(rel_video);
 
     if (entry_point != 0x00)
         load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
@@ -179,9 +178,6 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
     new_task->switches = 0;
     
     new_task->screen_id = new_disp(0, new_task->PID, 0, COLUMNS, 0, LINES);
-
-    (new_task->stream).accessed = 0;
-    (new_task->stream).position = -1;
 
     new_task->next = new_task;
     new_task->prev = new_task;
