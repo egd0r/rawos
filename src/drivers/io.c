@@ -4,22 +4,7 @@
 // IN_STREAM stream = { .accessed = 0, .position = -1 };
 int in_ = -1;
 
-char getch() {
 
-	// IN_STREAM stream = current_display->stream;
-	IN_STREAM stream;
-	if (stream.position == -1) {
-		return -1;
-	} else {
-		// stream.accessed = 1;
-		// int curr_pos = stream.position;
-		// stream.position--;
-		// int ret = stream.buffer[curr_pos];
-		// stream.accessed = 0;
-		int ret = stream.buffer[(stream.position)--];
-		return ret;
-	} 
-}
 
 
 /*

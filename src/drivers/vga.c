@@ -39,29 +39,27 @@ SCR_CHAR to_char_mod(int c, int ATTRIBUTES) {
 #define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
 
 void putchar_current(int c) {
-    putchar(DEFAULT_CHAR(c), current_screen, screen_arr[current_screen].selected_cont);
+    putchar(DEFAULT_CHAR(c), current_screen->id, current_screen->selected_cont);
 }
 
 // Writes to every buffer containing process
 void putchar_variable(SCR_CHAR char_mod, int pid) {
-    for (int i=1; i<no_screens; i++) {
-        SCREEN_O curr = screen_arr[i];
-        for (int ii=0; ii<curr.cont_size; ii++) {
-            CONTAINER cont = curr.conts[ii];
+    for (SCREEN_O *temp = screen_root; temp != NULL; temp = temp->next) {
+        for (int ii=0; ii<temp->cont_size; ii++) {
+            CONTAINER cont = temp->conts[ii];
             if (cont.pid == pid) {
-                putchar(char_mod, i, ii);
+                putchar(char_mod, temp->id, ii);
             }
         }
     }
 }
 
 void putchar_proc(int c, int pid) {
-    for (int i=1; i<no_screens; i++) {
-        SCREEN_O curr = screen_arr[i];
-        for (int ii=0; ii<curr.cont_size; ii++) {
-            CONTAINER cont = curr.conts[ii];
+    for (SCREEN_O *temp = screen_root; temp != NULL; temp = temp->next) {
+        for (int ii=0; ii<temp->cont_size; ii++) {
+            CONTAINER cont = temp->conts[ii];
             if (cont.pid == pid) {
-                putchar(DEFAULT_CHAR(c), i, ii);
+                putchar(DEFAULT_CHAR(c), temp->id, ii);
                 return; // Not needed
             }
         }
@@ -70,8 +68,8 @@ void putchar_proc(int c, int pid) {
 
 void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {
     // assert(screen_id <= MAX_SCREEN_NO);
-    SCREEN_O *sel_screen = &(screen_arr[screen_id]);
-    if (sel_screen->id == 0) return;
+    SCREEN_O *sel_screen = find_screen(screen_id);
+    if (sel_screen == NULL || sel_screen->id == 0) return;
     // assert(cont_id <= MAX_CONTAINER_SIZE);
 
     CONTAINER *sel_container = &(sel_screen->conts[cont_id]);
@@ -88,7 +86,7 @@ void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {
         return;
     }
 
-    if (current_screen == sel_screen->id) {
+    if (current_screen->id == sel_screen->id) {
         // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
         // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
         (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)] = char_mod;

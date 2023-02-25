@@ -26,7 +26,7 @@ typedef struct CONT_O{
     int pid;
     int parent_screen_id;
     TASK_DISP_INFO display_blk;
-    struct CONT_O *next;
+    IN_STREAM stream;
 } CONTAINER;
 
 typedef struct SCREEN {
@@ -35,8 +35,8 @@ typedef struct SCREEN {
     int selected_cont;
     int cont_size;
     struct CONT_O conts[4];
-    IN_STREAM stream;
-}__attribute__((packed)) SCREEN_O;
+    struct SCREEN *next;
+} SCREEN_O;
 
 int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax);
 int FULL_DISPLAY(int pid);
@@ -46,6 +46,7 @@ int taskbar_disp(int pid);
 void attach_proc_to_screen(TASK_LL *proc, int container_id);
 void remove_proc_from_screen(TASK_LL *proc, int container_id);
 
-extern int current_screen;
+extern SCREEN_O * current_screen;
 extern int no_screens;
-extern SCREEN_O screen_arr[COLUMNS];
+// extern SCREEN_O screen_arr[COLUMNS];
+extern SCREEN_O * screen_root;

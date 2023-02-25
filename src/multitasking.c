@@ -144,7 +144,7 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
     
     // Assert screen create
 
-    TASK_LL *new_task = kp_alloc(PAGE_DIR_VIRT, 1);
+    TASK_LL *new_task = kp_alloc(1);
 
     if (entry_point != 0x00) {
         uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
@@ -169,7 +169,6 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
         new_task->PID = 1;
         new_task->flags |= DISPLAY_TRUE;
         new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
-        current_screen = new_task->PID;
     } else { 
         new_task->PID = PID_COUNTER++;
         new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output

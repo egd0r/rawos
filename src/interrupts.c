@@ -141,20 +141,16 @@ int kbd_us [128] =
     0,  /* All other keys are undefined */
 };
 
-extern IN_STREAM stream;
 extern char in_;
 int alt_pressed = 0;
 extern int swap_screens(int new_screen_id);
 void kb_handler() {
 	uint8_t scode = inb(PS2_PORT);
-	// kprintf("%x ", scode);
-	// If key PRESSED
+
 	if (kbd_us[scode] == 0xA13) {
 		alt_pressed = 1;
-		// kprintf("ALT pressed!");
 	} else if (scode == 184) {
 		alt_pressed = 0;
-		// kprintf("ALT released!");
 	} else if (alt_pressed == 1 && scode < 0x81) {
 		load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
 		if (scode == 11) {
@@ -164,30 +160,12 @@ void kb_handler() {
 		}
 		load_cr3(current_item->cr3);
 	} else if (scode < 0x81) {
-		// printf("%c ", kbd_us[scode]); 
-		// CONTAINER *proc_cont = find_container(current_item->PID);
-        // if (proc_cont == NULL) return;
+        IN_STREAM *stream = &(current_screen->conts[current_screen->selected_cont].stream);
 
-        // IN_STREAM *stream = &(proc_cont->stream);
-
-		// stream->position = (stream->position+1)%100;
-		// stream->buffer[stream->position] = kbd_us[scode];
-
-		// load_cr3((uint64_t)current_display->cr3); 
-		// putchar(kbd_us[scode], current_display);
-		// putchar_current(kbd_us[scode]);
-		// load_cr3(current_item->cr3);
-
-		// Backspace
-		// Call vga.rem
-		// remchar()
-
-		// in_ = kbd_us[scode];
+		stream->position = (stream->position+1)%10;
+		stream->buffer[stream->position] = kbd_us[scode];
 	} 
-	// else {
-	// 	kprintf("Unrecognised scancode: %d\n", scode);
-	// }
-	// For now can decode code here and place on screen
+
 	picEOI(0x21-PIC1_OFFSET);
 }
 

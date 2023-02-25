@@ -38,7 +38,7 @@ void memset(uint64_t ptr, uint8_t val, uint64_t size);
 void memcpy(uint8_t *from, uint8_t *to, uint64_t size);
 // LVLs defined above
 #define p_alloc(pt_ptr, n) page_alloc(pt_ptr, PT_LVL4, n)
-#define kp_alloc(pt_ptr, n) page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n) | KERNEL_OFFSET
+#define kp_alloc(n) (page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n) | KERNEL_OFFSET)
 // void *page_alloc(uint64_t *pt_ptr, int LVL, uint16_t n);
 
 void *new_malloc(int bytes);

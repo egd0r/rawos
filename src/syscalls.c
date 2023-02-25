@@ -12,6 +12,9 @@ void * syscall_handler(INT_FRAME frame) {
 
 
     switch (frame.rdx) {
+
+        case 3:
+            getch(frame.rbx);
         case 4:
             printf(frame.rbx);
             break;

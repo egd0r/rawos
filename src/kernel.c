@@ -19,10 +19,10 @@ void sys_printf(const char *format, ...) {
     va_end(arg);
 }
 
-// char sys_getch(char *buffer) {
-//     return syscal_test(3);
-//     asm __volatile__("int $0x80" : : "a" (3), "b" (buffer));
-// }
+char sys_getch(char *buffer) {
+    return syscal_test(3);
+    asm __volatile__("int $0x80" : : "a" (3), "b" (buffer));
+}
 
 /*
     Can force scheduler by calling interrupt 0x20 = 32 in stub table which corresponds to timer interrupt
@@ -193,9 +193,9 @@ int kmain(unsigned long mbr_addr) {
 
     while (1) {
     //   printf("k2");
-        // char ch = getch();
+        char ch = getch();
         // if (ch == '\0') get_word();
-        // if (ch != -1) printf("%c ", ch);
+        if (ch != -1) printf("%c ", ch);
     }; //Spin on hang
     // Spawn init process
     

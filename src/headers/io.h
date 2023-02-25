@@ -27,7 +27,7 @@
 typedef struct stream_io {
     int accessed;
     int position;
-    char buffer[100];
+    char buffer[10];
 } IN_STREAM;
 
 char getch(); 
