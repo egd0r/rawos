@@ -16,7 +16,6 @@ int FULL_DISPLAY(int pid) {
 }
 
 CONTAINER *find_container(int pid) {
-
     for (SCREEN_O *temp = screen_root; temp != NULL; temp=temp->next) {
         for (int i=0; i<temp->cont_size; i++) {
             CONTAINER cont = temp->conts[i];
@@ -27,37 +26,15 @@ CONTAINER *find_container(int pid) {
     return NULL;
 }
 
-char getch() {
-
-	// IN_STREAM stream = current_display->stream;
+void getch(char *buffer) {
 	IN_STREAM *stream = &(find_container(current_item->PID)->stream);
 	if (stream->position == -1) {
-		return -1;
+		buffer[0] = -1;
 	} else {
-		// stream.accessed = 1;
-		// int curr_pos = stream.position;
-		// stream.position--;
-		// int ret = stream.buffer[curr_pos];
-		// stream.accessed = 0;
 		int ret = stream->buffer[(stream->position)--];
-		return ret;
+		buffer[0] = ret;
 	} 
 }
-
-// void getch(char *buffer) {
-
-// 	IN_STREAM stream;
-// 	if (stream.position == -1) {
-// 		return -1;
-// 	} else {
-//         CONTAINER *proc_cont = find_container(current_item->PID);
-//         if (proc_cont == NULL) return;
-
-//         // IN_STREAM stream = proc_cont->stream;
-
-// 		// buffer[0] = stream.buffer[(stream.position)--];
-// 	} 
-// }
 
 SCREEN_O * find_screen(int id) {
     for (SCREEN_O *temp = screen_root; temp != NULL; temp=temp->next) {
@@ -102,12 +79,7 @@ int taskbar_disp(int pid) {
 //     SCR_CHAR ch[COLUMNS];
 // } TASK_BAR;
 void k_taskbar() {
-    char *bar = "1|2|3|4|5";
-
     SCR_CHAR *task_b = (SCR_CHAR *)new_malloc(sizeof(SCR_CHAR)*MAX_SCREEN_NO);
-    // task_b[0].ch = 'E';
-    // task_b[0].attribute = ATT_LT_BLUE << 4 | ATT_LT_MAGENTA;
-
 
     while (1) {  
         int index=0;
@@ -146,6 +118,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
 
     CONTAINER cont;
     memset(&cont, 0, sizeof(cont));
+    cont.stream.position = -1;
 
     if (curr != 0)
         new_scr = find_screen(curr);

@@ -1,10 +1,19 @@
 #include <io.h>
 #include <multitasking.h>
 
+#include <vga.h>
+
 // IN_STREAM stream = { .accessed = 0, .position = -1 };
 int in_ = -1;
 
+void move_cursor(int x, int y) {
+	uint16_t pass = y * COLUMNS + x;
 
+	outb(0x3D4, 0x0F);
+	outb(0x3D5, (uint8_t) (pass & 0xFF));
+	outb(0x3D4, 0x0E);
+	outb(0x3D5, (uint8_t) ((pass >> 8) & 0xFF));
+} 
 
 
 /*

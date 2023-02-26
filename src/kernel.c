@@ -20,8 +20,11 @@ void sys_printf(const char *format, ...) {
 }
 
 char sys_getch(char *buffer) {
-    return syscal_test(3);
     asm __volatile__("int $0x80" : : "a" (3), "b" (buffer));
+}
+
+char sys_sleep(int secs) {
+    asm __volatile__("int $0x80" : : "a" (35), "b" (secs));
 }
 
 /*
@@ -41,6 +44,7 @@ void taskA() {
     while (1) {
         // if (x[0] % 10000 == 0)
         sys_printf("A");
+        // sleep(10);
         // cls();
 
         x[0]++;
@@ -48,51 +52,27 @@ void taskA() {
 }
 
 void taskB() {
-    // for (int i=0; i<COLUMNS * LINES; i++) {
-    //     printf("%d ", i%9);
-    // }
-    // while (1);
+
     int *test = new_malloc(sizeof(int)*5);
     test[0] = 5;
     while(1) {
         sys_printf("B ");
+        sys_sleep(10);
     }
 }
 
 void taskC() {
-    // for (int i=0; i<100; i++) {
-    //     i--;
-    // }
-    // while (1) {
-    //     printf("C");
-    // }
-    // int *x = (int *)new_malloc(sizeof(int)*3);
-    // x[0] = 5;
-    // int i=0;
-    // char buffer[5];
-    // char *temp = buffer;
+
     while (1) {
         sys_printf("C");
-        // x[0]++;
     } 
 }
-
-
-
-// extern void switch_task();
-
-/*
-    TODO:
-        - ASM routine to switch tasks without having to trigger an interrupt so tasks can be pre-empted
-        - Find a way to share kernel structures across page tables in processes (shared memory)
-        - Message passing between processes
-        - InitRD which is loaded through GRUB, containing user processes - WCS don't need this can start all in kmain
-
-*/
 
 extern uint64_t RODATA_START;
 extern void syscal_test(int syscall_num, char *rbx);
 
+
+void process_command(char *command);
 int kmain(unsigned long mbr_addr) {
     heap_current = heap_start;
     // Initialise IDT
@@ -105,7 +85,6 @@ int kmain(unsigned long mbr_addr) {
     memset(BITMAP_VIRTUAL, ~0, 0x10000); //Sets bitmap to entirely allocated
 
     // Initialises memory map and finds initrd
-    cls();
     init_memory_map(mbr_addr);
 
     extern uint64_t initrd_start;
@@ -121,22 +100,6 @@ int kmain(unsigned long mbr_addr) {
     // Free at 0
     kfree_physical((void *)ptr);
 
-    // Getting 1 byte (1 page) from physical memory
-
-    // unmap_page(0x0); //Unmapping first 16MB 
-
-    // Unmapping lower half CHANGE STACK PTR INSIDE KMAIN
-
-    // uint64_t *virt_addr = p_alloc(PAGE_DIR_VIRT, 1); // Trying to allocate first free page
-    // int *virt_addr = page_alloc(PAGE_DIR_VIRT, PT_LVL4, 1); // Trying to allocate first free page
-    // // uint64_t *virt_addr = page_alloc(KERNEL_LVL2_MAP, PT_LVL2, 1) | KERNEL_OFFSET; // Trying to allocate first free page
-    // *virt_addr = 100;
-    
-    // uint64_t *virt_addr_new = sbrk(1); // Trying to allocate first free page
-    // *virt_addr_new = 1024;
-
-    // uint64_t *sbrk_eg = sbrk(0);
-
     int *arr = new_malloc(sizeof(int)*5);
     arr[1] = 5;
 
@@ -144,60 +107,85 @@ int kmain(unsigned long mbr_addr) {
     uint64_t taskA_phys = (uint64_t)get_pagetable_entry(&taskA);
 
 
-
-    //Trying to deref page directory - PF int 0x0E
-    // *((uint64_t *)0x222222222222) = 453;
-
-
-    *((int *)0xb8900) = mbr_addr;   // print address
-    // *((int *)0xb8900) = 0x00000000;
-
-    kprintf("SPINNING!\n"); 
-    print_reg("RODATA", &RODATA_START);
-    print_reg("L4 physical", main_cr3);
-    print_reg("TA physical", taskA_phys);
-
-    kprintf("OK!\n");
+    *((int *)0xb8900) = mbr_addr;  
     
-    // printf("\nTesting page fault: %d\n", 14);
-    printf("Test");
-    cls();
     create_task(&taskA);
     create_task(&taskB);
     create_task(&taskC);
     create_task(&k_taskbar);
     cls();
-    activate_interrupts(); // sti
-    // CLI();
-    
-    
+    activate_interrupts();
 
+    // Shell
+    char command_buffer[50] = {'\0'};
+    char *temp = command_buffer;
 
-    // Saves state on stack and selects a new process to run (sets current_item)
-    // schedule(current_item->stack);
-    // Takes stack of item to switch to and performs context switch with ret
-    // -> Examine stack and swaps incase of error
-    // switch_task(current_item->stack);
-
-
-    // cls();
-    // extern uint64_t ms_since_boot;
-    // while(ms_since_boot != 10000);
-    // printf("%c ", getch());
-    // printf("%c ", getch());
-    // printf("%c ", getch());
-    // printf("%c ", getch());
-    // printf("%c ", getch());
-
-    // Enter adds \0 and command gets set to handler?
-
+    sys_printf(">");
     while (1) {
     //   printf("k2");
-        char ch = getch();
-        // if (ch == '\0') get_word();
-        if (ch != -1) printf("%c ", ch);
+        sys_getch(temp);
+        char ch = temp[0];
+        if (ch == '\n') {
+            *(temp)='\0';
+            process_command(command_buffer);
+            sys_printf(">");
+            temp = command_buffer;
+        } else if (ch != -1) {
+            sys_printf("%c ", ch);
+            *temp = ch; temp++;
+        }
+
+        // sys_getch(temp);
+        // // if (ch == '\0') get_word();
+        // if (temp[0] != -1) {
+        //     sys_printf("%c ", *temp);
+        // }
     }; //Spin on hang
     // Spawn init process
     
     return 0;
+}
+
+int strncmp(char *s, char *t, int num) {
+   for ( ; num >0;  s++, t++, num--)
+        if (*s == 0)
+            return 0;
+
+    if (*s == *t) {
+        ++s;
+        ++t;
+    }
+    else if (*s != *t)
+        return *s - *t;   
+}
+
+
+void print_proc(TASK_LL *task) {
+    sys_printf("PID: %d    ", task->PID);
+    sys_printf("Proc time(ms): %d    ", task->proc_time);
+    sys_printf("Screen ID: %d\n", task->screen_id);
+}
+
+void ps() {
+    sys_printf("\nCurrent:\n");
+    print_proc(current_item);
+    sys_printf("Ready:\n");
+    for (TASK_LL *temp = ready_start; temp != NULL; temp=temp->next) {
+        print_proc(temp);
+        if (temp == ready_end) break;
+    }
+    sys_printf("Blocked:\n");
+    for (TASK_LL *temp = blocked_start; temp != NULL; temp=temp->next) {
+        print_proc(temp);
+        if (temp == blocked_end) break;
+    }
+}
+
+void clear() {
+    cls();
+}
+
+void process_command(char *command) {
+    if (strncmp(command, "ps", 2) == 0) ps();
+    else if (strncmp(command, "clear", 5) == 0) clear();
 }

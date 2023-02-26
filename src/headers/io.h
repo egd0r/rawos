@@ -30,8 +30,7 @@ typedef struct stream_io {
     char buffer[10];
 } IN_STREAM;
 
-char getch(); 
-
+void move_cursor(int x, int y);
 void outb(uint16_t port, uint8_t val);
 uint8_t inb(uint16_t port);
 void io_wait(void);

@@ -42,6 +42,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax);
 int FULL_DISPLAY(int pid);
 int taskbar_disp(int pid);
 
+void getch(char *buffer);
 
 void attach_proc_to_screen(TASK_LL *proc, int container_id);
 void remove_proc_from_screen(TASK_LL *proc, int container_id);

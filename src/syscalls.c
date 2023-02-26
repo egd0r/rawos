@@ -3,22 +3,30 @@
 #include <interrupts.h>
 #include <types.h>
 
-void * syscall_handler(INT_FRAME frame) {
+void * syscall_handler(INT_FRAME **frame) {
     // kprintf("ello there chappy\n");
     // kprintf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
 
     void *ret;
     // STI();
 
-
-    switch (frame.rdx) {
+    switch ((*frame)->rdx) {
 
         case 3:
-            getch(frame.rbx);
+            getch((*frame)->rbx);
+            break;
         case 4:
-            printf(frame.rbx);
+            printf((*frame)->rbx);
+            break;
+        case 35:
             break;
 
+    }
+
+    if ((*frame)->rdx == 35) {
+        TASK_LL *new_task = sleep((*frame)->rbx);
+        *frame = (void *)(new_task->stack);
+        load_cr3(new_task->cr3);
     }
 
     // CLI();

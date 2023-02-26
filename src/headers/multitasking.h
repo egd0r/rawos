@@ -36,6 +36,8 @@ typedef struct task_item_ll {
 	enum TASK_STATE task_state; // Can check state
     int parent_PID;
     int switches;
+	int wake_after_ms;
+	uint64_t proc_time;
     uint8_t *stack;
 	uint8_t *heap_current;
 	uint64_t cr3;
@@ -53,9 +55,10 @@ typedef struct task_item_group {
 
 	TASK_LL *curr_item;
 	
-	TASK_LL *blocked;
-	TASK_LL *trm_curr;
+	TASK_LL *blkd_start;
+	TASK_LL *blkd_end; 
 
+	TASK_LL *trm_curr;
 } TASK_GRP;
 
 // Process management
@@ -69,13 +72,16 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state);
 TASK_LL * find_prev_task(int pid);
 TASK_LL * TASK(int pid);
 
+TASK_LL * sleep(int secs);
+
 
 extern TASK_GRP init_task_grp;
 
 #define current_item init_task_grp.curr_item
 #define ready_start init_task_grp.rdy_start
 #define ready_end init_task_grp.rdy_end
-#define blocked_item init_task_grp.blocked
+#define blocked_start init_task_grp.blkd_start
+#define blocked_end init_task_grp.blkd_end
 #define terminated_curr init_task_grp.trm_curr
 #define TASK_COUNT init_task_grp.number_of_tasks
 

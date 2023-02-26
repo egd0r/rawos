@@ -5,6 +5,9 @@
 #include <memory.h>
 #include <io.h>
 
+#define TEN_MS 11932
+#define PIT_RELOAD TEN_MS*6*3
+
 static idtr_t idtr;
 
 __attribute__((aligned(0x10))) 
@@ -17,8 +20,9 @@ static idt_entry_t idt[256] __attribute__((section(".rodata"))); // Create an ar
 uint64_t ms_since_boot = 0x00;
 uint64_t frac_ms_since_boot = 0x00;
 
-uint64_t time_between_irq_ms = 0x0A;
-uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A;
+uint64_t time_between_irq_ms = 60;
+// uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A; // 10.xx ms
+uint64_t time_between_irq_frac = 0x003C6AEA59A58DC3A282; // 60.xx ms
 
 void get_virt_test_i() {
 	print_reg("IDTR", (uint64_t)(&idtr));
@@ -181,10 +185,12 @@ extern void syscall_stub();
 int counter = 0;
 void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 	// Switching to interrupt stack
-
+	current_item->stack = frame;
 	// kprintf("Recoverable interrupt 0x%2x\n", frame.vector);
 	void *ret = frame;
 	if (frame->vector == 0x20) {
+
+		
 		// interrupt 20h corresponds to PIT
 		// Switch contexts 
 		ms_since_boot += time_between_irq_ms;
@@ -192,16 +198,46 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		if (frac_ms_since_boot > temp) ms_since_boot++; // Overflow
 		frac_ms_since_boot += temp;
 
+		current_item->proc_time += time_between_irq_ms;
+
 		if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
 			load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); // Need interrupt stack
 
 		TASK_LL *new_task = task_switch_int(frame);
 
+		// Checking blocked queue and unblocking processes as needed
+		TASK_LL *prev = NULL;
+		for (TASK_LL *temp_blkd = blocked_start; prev != blocked_end && blocked_start != NULL; temp_blkd=temp_blkd->next) {
+			temp_blkd->wake_after_ms -= time_between_irq_ms;
+			if (temp_blkd->wake_after_ms <= 0) {
+				ready_end->next = temp_blkd;
+				ready_end = temp_blkd;
+				temp_blkd->task_state = READY;
+
+				if (prev == NULL) { 
+					// temp_blkd == blocked_start is true
+					if (blocked_start->next != blocked_start) blocked_start = blocked_start->next;
+					else {
+						blocked_start = NULL;
+						blocked_end = NULL;
+					}
+				} else {
+					prev->next = temp_blkd->next;
+				}
+
+				temp_blkd->next = NULL;
+			}
+
+			prev = temp_blkd;
+		}
+
+
+
 		picEOI(frame->vector-PIC1_OFFSET);
 
-		ret = (void *)(new_task->stack);
 
 		load_cr3(new_task->cr3); // Changing to new process address space where stack is defined
+		ret = (void *)(new_task->stack);
 	} else if (frame->vector == 0x0D) {
 		kprintf("General protection fault -_-\n");
 		print_reg_state(*frame);
@@ -215,7 +251,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		kb_handler();
 		// load_cr3(frame->cr3); // Changing to new process address space where stack is defined
 	} else if (frame->vector == 0x80) {
-		syscall_handler(*frame);
+		syscall_handler(&ret);
 	} else {
 		cls();
 		kprintf("Interrupted %d\n", frame->vector);
@@ -263,7 +299,7 @@ void idt_init() {
 	remapPIC();
 	
 	// PIT
-	set_pit_freq(11932);
+	set_pit_freq(PIT_RELOAD);
 	// set_pit_freq(65536);
 	//KB stuff
 	outb(PIC1_DATA, 0b11111100); // Enabling keyboard by unmasking correct line in PIC master

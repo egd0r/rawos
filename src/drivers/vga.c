@@ -3,17 +3,6 @@
 
 
 
-void cls (void) {
-  xpos = 0; ypos = 0;
-  int i;
-
-  video = (unsigned char *) VIDEO;
-  
-  for (i = 0; i < COLUMNS * LINES * 2; i++)
-    *(video + i) = 0xFFFF;
-
-}
-
 
 
 /*  Convert the integer D to a string and save the string in BUF. If
@@ -25,6 +14,7 @@ void newline(TASK_DISP_INFO *display_blk) {
     display_blk->ypos++;
     if (display_blk->ypos > display_blk->ymax)
         display_blk->ypos = display_blk->ymin;
+
     return;
 }
 
@@ -37,6 +27,20 @@ SCR_CHAR to_char_mod(int c, int ATTRIBUTES) {
 
 #define DEFAULT_CHAR(c) to_char_mod(c, ATT_BLACK << 4 | ATT_LT_GREY)
 #define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
+#define CLEAR_CHAR() to_char_mod(' ', ATT_BLACK << 4 | ATT_BLACK)
+
+void cls (void) {
+    SCR_CHAR c = CLEAR_CHAR();
+    
+    for (int i = 0; i < COLUMNS * LINES; i++)
+        putchar_variable(c, current_item->PID);
+
+    CONTAINER *cont = find_container(current_item->PID);
+    cont->display_blk.xpos = 0;
+    cont->display_blk.ypos = 0;
+    if (cont->pid == current_screen->conts[current_screen->selected_cont].pid) move_cursor(cont->display_blk.xpos, cont->display_blk.ypos);
+
+}
 
 void putchar_current(int c) {
     putchar(DEFAULT_CHAR(c), current_screen->id, current_screen->selected_cont);
@@ -87,13 +91,9 @@ void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {
     }
 
     if (current_screen->id == sel_screen->id) {
-        // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-        // (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
         (((SCREEN_O *)video)->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)] = char_mod;
+        if (cont_id == sel_screen->selected_cont) move_cursor(display_blk->xpos, display_blk->ypos);
     } 
-
-    // (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].ch = (char)c;
-    // (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)].attribute = ATT_BLACK << 4 | ATT_LT_GREY;
 
     (sel_screen->chars)[(display_blk->xpos + display_blk->ypos * COLUMNS)] = char_mod;
 

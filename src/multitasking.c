@@ -31,6 +31,28 @@ void unlock_scheduler() {
     }
 }
 
+extern uint64_t page_table_l4; // Kernel data
+TASK_LL * sleep(int secs) {
+    // Add current process to blocked queue
+    current_item->wake_after_ms = secs*1000;
+
+    // Add seconds to sleep for
+    if (blocked_start == NULL) {
+        blocked_start = current_item;
+        blocked_end = current_item;
+        blocked_start->next = blocked_end;
+    } else {
+        blocked_end->next = current_item;
+        blocked_end = current_item;
+    }
+    // Schedule next process from ready queue
+
+    current_item = ready_start;
+    current_item->task_state = RUNNING;
+    ready_start = ready_start->next; // Progress ready_start
+    return current_item;
+}
+
 void add_to_circular_q(TASK_LL *current, TASK_LL * to_add) {
     if (current == NULL) {
         current = to_add;
@@ -220,14 +242,9 @@ TASK_LL * find_prev_task(int pid) {
 }
 
 // This should call schedule and get a new task - trigger different schedule interrupt? Have asm routine for switching tasks?
-int block_task(int pid) {
-    TASK_LL *task = TASK(pid);
+int block_task(TASK_LL *task) {
     task->task_state = BLOCKED;
-
-    // Remove from ready
-    remove_from_end(ready_start, ready_end, task);
     // Add to blocked
-    add_to_circular_q(blocked_item, task);
 }
 
 
@@ -270,6 +287,7 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     }
 
     heap_current = current_item->heap_current;
+    current_item->switches++;
 
     return current_item;
 }
