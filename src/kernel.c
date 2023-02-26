@@ -57,7 +57,7 @@ void taskB() {
     test[0] = 5;
     while(1) {
         sys_printf("B ");
-        sys_sleep(10);
+        sys_sleep(1);
     }
 }
 

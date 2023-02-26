@@ -44,6 +44,7 @@ SCREEN_O * find_screen(int id) {
 }
 
 int add_screen(SCREEN_O *screen) {
+    screen->next = NULL;
     SCREEN_O *temp;
     for (temp = screen_root; temp->next != NULL; temp=temp->next);
     temp->next = screen;
@@ -101,6 +102,7 @@ int swap_screens(int new_screen_id) {
     if (new_screen_id > no_screens || new_screen_id == 0) return -1;
 
     SCREEN_O *to_swap = find_screen(new_screen_id);
+    if (to_swap == NULL) return -1;
 
     SCR_CHAR *buffer = &(to_swap->chars);
     memcpy(buffer, VIDEO_ACTUAL, COLUMNS * LINES * 2);

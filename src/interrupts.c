@@ -18,9 +18,9 @@ uint16_t poll_pit();
 uint64_t ms_since_boot = 0x00;
 uint64_t frac_ms_since_boot = 0x00;
 
-uint64_t time_between_irq_ms = 60;
+uint64_t time_between_irq_ms = 30;
 // uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A; // 10.xx ms
-uint64_t time_between_irq_frac = 0x003C6AEA59A58DC3A282; // 60.xx ms
+uint64_t time_between_irq_frac = 0x001E357FA731214C0A0A; // 30.xx ms
 
 void get_virt_test_i() {
 	print_reg("IDTR", (uint64_t)(&idtr));
