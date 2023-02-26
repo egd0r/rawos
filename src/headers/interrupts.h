@@ -5,6 +5,9 @@
 #define IDT_TA_CallGate			0b10001100 // 0x8C
 #define IDT_TA_TrapGate			0b10001111 // 0x8F
 
+#define TEN_MS 11932
+#define PIT_RELOAD TEN_MS*3
+
 
 
 void remapPIC();

@@ -32,9 +32,11 @@ void unlock_scheduler() {
 }
 
 extern uint64_t page_table_l4; // Kernel data
+uint16_t poll_pit();
 TASK_LL * sleep(int secs) {
     // Add current process to blocked queue
     current_item->wake_after_ms = secs*1000;
+    current_item->proc_time += poll_pit()/PIT_RELOAD;
 
     // Add seconds to sleep for
     if (blocked_start == NULL) {

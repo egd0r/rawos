@@ -5,15 +5,13 @@
 #include <memory.h>
 #include <io.h>
 
-#define TEN_MS 11932
-#define PIT_RELOAD TEN_MS*6*3
-
 static idtr_t idtr;
 
 __attribute__((aligned(0x10))) 
 static idt_entry_t idt[256] __attribute__((section(".rodata"))); // Create an array of IDT entries; aligned for performance
 
 
+uint16_t poll_pit();
 /*
 	Time alive incremented with tick times with each PIT IRQ call
 */
@@ -274,6 +272,21 @@ void idt_set_descriptor(uint8_t vector, void *isr, uint8_t flags) {
     descriptor->isr_high = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
     descriptor->reserved = 0;
 
+}
+
+
+// Only call from ISR
+uint16_t poll_pit() {
+	uint16_t count = 0;
+ 
+	// al = channel in bits 6 and 7, remaining bits clear
+	outb(0x43,0b0000000);
+ 
+	count = inb(PIT_CHNL_0);		// Low byte
+	io_wait();
+	count |= inb(PIT_CHNL_0)<<8;		// High byte
+ 
+	return count;
 }
 
 void set_pit_freq(uint16_t reload_count) {
