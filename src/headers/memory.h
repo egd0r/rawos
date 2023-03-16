@@ -26,7 +26,8 @@ extern uint64_t KERNEL_END;
 
 #define KERNEL_LVL2_MAP 0xFFFFFF7FBFFFE000
 
-struct multiboot_tag_mmap *init_memory_map(void *mbr_addr);
+struct multiboot_tag_mmap *init_memory_map(unsigned long mbr_addr);
+uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n);
 
 #define KALLOC_PHYS() kalloc_physical(1)
 // #define sbrk(n) page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n % PHYSICAL_PAGE_SIZE == 0 ? n/PHYSICAL_PAGE_SIZE : n/PHYSICAL_PAGE_SIZE + 1) | KERNEL_OFFSET
@@ -37,9 +38,8 @@ void kfree_physical(void *ptr);
 void memset(uint64_t ptr, uint8_t val, uint64_t size);
 void memcpy(uint8_t *from, uint8_t *to, uint64_t size);
 // LVLs defined above
-#define p_alloc(pt_ptr, n) page_alloc(pt_ptr, PT_LVL4, n)
-#define kp_alloc(n) (page_alloc(KERNEL_LVL2_MAP, PT_LVL2, n) | KERNEL_OFFSET)
-// void *page_alloc(uint64_t *pt_ptr, int LVL, uint16_t n);
+#define p_alloc(pt_ptr, n) page_alloc((uint64_t *)pt_ptr, PT_LVL4, n)
+#define kp_alloc(n) (page_alloc((uint64_t *)KERNEL_LVL2_MAP, PT_LVL2, n) | KERNEL_OFFSET)
 
 void *new_malloc(int bytes);
 void new_free(void *ptr);

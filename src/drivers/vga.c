@@ -2,7 +2,9 @@
 #include <vga.h>
 
 
-
+static volatile uint16_t *video = (uint16_t *)VIDEO;
+static int xpos = 0;
+static int ypos = 0;
 
 
 /*  Convert the integer D to a string and save the string in BUF. If
@@ -29,19 +31,6 @@ SCR_CHAR to_char_mod(int c, int ATTRIBUTES) {
 #define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
 #define CLEAR_CHAR() to_char_mod(' ', ATT_BLACK << 4 | ATT_BLACK)
 
-void cls (void) {
-    SCR_CHAR c = CLEAR_CHAR();
-    
-    for (int i = 0; i < COLUMNS * LINES; i++)
-        putchar_variable(c, current_item->PID);
-
-    CONTAINER *cont = find_container(current_item->PID);
-    cont->display_blk.xpos = 0;
-    cont->display_blk.ypos = 0;
-    if (cont->pid == current_screen->conts[current_screen->selected_cont].pid) move_cursor(cont->display_blk.xpos, cont->display_blk.ypos);
-
-}
-
 void putchar_current(int c) {
     putchar(DEFAULT_CHAR(c), current_screen->id, current_screen->selected_cont);
 }
@@ -58,6 +47,22 @@ void putchar_variable(SCR_CHAR char_mod, int pid) {
     }
 }
 
+extern CONTAINER *find_container(int pid);
+void cls (void) {
+    SCR_CHAR c = CLEAR_CHAR();
+    
+    for (int i = 0; i < COLUMNS * LINES; i++)
+        putchar_variable(c, current_item->PID);
+
+    CONTAINER *cont = find_container(current_item->PID);
+    cont->display_blk.xpos = 0;
+    cont->display_blk.ypos = 0;
+    if (cont->pid == current_screen->conts[current_screen->selected_cont].pid) move_cursor(cont->display_blk.xpos, cont->display_blk.ypos);
+
+}
+
+
+
 void putchar_proc(int c, int pid) {
     for (SCREEN_O *temp = screen_root; temp != NULL; temp = temp->next) {
         for (int ii=0; ii<temp->cont_size; ii++) {
@@ -70,6 +75,7 @@ void putchar_proc(int c, int pid) {
     }
 }
 
+extern SCREEN_O * find_screen(int id);
 void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {
     // assert(screen_id <= MAX_SCREEN_NO);
     SCREEN_O *sel_screen = find_screen(screen_id);
@@ -156,7 +162,7 @@ void printf(const char *format, ...) {
     va_list arg;
     va_start(arg, format);
 
-    char *string;
+    const char *string;
 
     for (string=format; *string != '\0'; string++) {
         if ( *string == '%' ) {
@@ -173,7 +179,6 @@ void printf(const char *format, ...) {
             int dec = 0;
             int base = 0;
             char *str;
-            SCR_CHAR *str_mod;
 
 
             char paddingChar;
@@ -239,7 +244,7 @@ void kprintf(const char *format, ...) {
     va_list arg;
     va_start(arg, format);
 
-    char *string;
+    const char *string;
 
     for (string=format; *string != '\0'; string++) {
         if ( *string == '%' ) {

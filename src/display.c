@@ -53,7 +53,7 @@ int add_screen(SCREEN_O *screen) {
 
 int taskbar_disp(int pid) {
     CONTAINER cont;
-    memset(&cont, 0, sizeof(cont));
+    memset((uint64_t)&cont, 0, sizeof(cont));
 
 
     TASK_DISP_INFO ret; ret.xpos = 0; ret.ypos = LINES; ret.xmin = 0; ret.xmax = COLUMNS; ret.ymin = LINES; ret.ymax = LINES;
@@ -79,6 +79,7 @@ int taskbar_disp(int pid) {
 // typedef struct {
 //     SCR_CHAR ch[COLUMNS];
 // } TASK_BAR;
+void sys_printf(const char *format, ...);
 void k_taskbar() {
     SCR_CHAR *task_b = (SCR_CHAR *)new_malloc(sizeof(SCR_CHAR)*MAX_SCREEN_NO);
 
@@ -98,16 +99,18 @@ void k_taskbar() {
 }
 
 int swap_screens(int new_screen_id) {
-    if (current_screen == new_screen_id) return -1;
+    if (current_screen->id == new_screen_id) return -1;
     if (new_screen_id > no_screens || new_screen_id == 0) return -1;
 
     SCREEN_O *to_swap = find_screen(new_screen_id);
     if (to_swap == NULL) return -1;
 
-    SCR_CHAR *buffer = &(to_swap->chars);
-    memcpy(buffer, VIDEO_ACTUAL, COLUMNS * LINES * 2);
+    SCR_CHAR *buffer = (SCR_CHAR *)(&(to_swap->chars));
+    memcpy((uint8_t *)buffer, (uint8_t *)VIDEO_ACTUAL, COLUMNS * LINES * 2);
 
     current_screen = to_swap;
+
+    return 1;
 }
 
 // Returns ID of new screen created
@@ -119,14 +122,14 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     SCREEN_O *new_scr;
 
     CONTAINER cont;
-    memset(&cont, 0, sizeof(cont));
+    memset((uint64_t)&cont, 0, sizeof(cont));
     cont.stream.position = -1;
 
     if (curr != 0)
         new_scr = find_screen(curr);
 
     new_scr = (SCREEN_O *)kp_alloc(2);
-    memset(new_scr, 0, sizeof(SCREEN_O));
+    memset((uint64_t)new_scr, 0, sizeof(SCREEN_O));
 
     cont.display_blk = ret;
     cont.pid = pid;
@@ -145,10 +148,6 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     no_screens++;
 
     return no_screens-1;
-}
-
-CONTAINER *remove_screen () {
-    // TODO...
 }
 
 void attach_proc_to_screen(TASK_LL *proc, int container_id) {

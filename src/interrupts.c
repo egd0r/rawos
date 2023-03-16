@@ -70,7 +70,7 @@ TASK_LL * task_switch_int(INT_FRAME *frame) {
 
 extern void flush_tlb();
 // Allocates a physical page at virt_addr
-void allocate_here(uint64_t virt_addr) {
+void allocate_here(uint64_t virt_addr, uint16_t flags) {
 	virt_addr >>= 12;
 	int l1_index = virt_addr & 0x1FF;
 	int l2_index = (virt_addr >> 9) & 0x1FF;
@@ -82,25 +82,25 @@ void allocate_here(uint64_t virt_addr) {
     uint64_t *page_ptr = PAGE_DIR_VIRT; //Used for indexing P4 directly
 
 	if ((page_ptr[l4_index] & PRESENT) == 0) {
-		page_ptr[l4_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+		page_ptr[l4_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
     page_ptr = ((((uint64_t)page_ptr << 9) | l4_index << 12) & PT_LVL3) | ((uint64_t)page_ptr & ~PT_LVL3);
 
 	if ((page_ptr[l3_index] & PRESENT) == 0) {
-		page_ptr[l3_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+		page_ptr[l3_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
 	page_ptr = ((((uint64_t)page_ptr << 9) | l3_index << 12) & PT_LVL2) | ((uint64_t)page_ptr & ~PT_LVL2);
 	
 	if ((page_ptr[l2_index] & PRESENT) == 0) {
-		page_ptr[l2_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+		page_ptr[l2_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
 	page_ptr = ((((uint64_t)page_ptr << 9) | l2_index << 12) & PT_LVL1) | ((uint64_t)page_ptr & ~PT_LVL1);
 
 	if ((page_ptr[l1_index] & PRESENT) != 0) kprintf("error in allocate here");
-	else page_ptr[l1_index] = (uint64_t)KALLOC_PHYS() | PRESENT | RW;
+	else page_ptr[l1_index] = (uint64_t)KALLOC_PHYS() | flags;
 
 	flush_tlb();
 }
@@ -241,7 +241,9 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		print_reg_state(*frame);
 		__asm__ volatile ("hlt");
 	} else if (frame->vector == 0x0E) {
-		allocate_here(arg);
+		if (current_item == NULL || current_item->PID == 0 || 
+		((arg >= HEAP_START) || (arg <= current_item->heap_current) ))
+			allocate_here(arg, RW | PRESENT);
 	} else if (frame->vector == 0x21) {
 		// Caused TF -> GPF
 		// if (frame->cr3 != ((uint64_t)(&page_table_l4)&0xFFFFF))
@@ -290,11 +292,9 @@ uint16_t poll_pit() {
 }
 
 void set_pit_freq(uint16_t reload_count) {
-	CLI();
 	outb(PIT_CHNL_0, reload_count & 0xFF);
 	io_wait();
 	outb(PIT_CHNL_0, (reload_count & 0xFF00) >> 8);
-	STI();
 }
 
 extern void *isr_stub_table[];

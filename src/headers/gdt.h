@@ -16,7 +16,7 @@ typedef struct gdt_entry_bits {
 	unsigned int big                    :  1; // 32-bit opcodes for code, uint32_t stack for data
 	unsigned int gran                   :  1; // 1 to use 4k page addressing, 0 for byte addressing
 	unsigned int base_high              :  8;
-} GDT_ENTRY __attribute__((packed)); 
+} GDT_ENTRY; 
 
 struct tss_entry {
     uint32_t res_0;

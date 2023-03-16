@@ -5,7 +5,6 @@
 #define VIDEO 0xFFFFFFFF800b8000 // Using vid base+virt since we're now in higher half ;)
 #define PROC_VIDEO HEAP_START
 #include <types.h>
-static volatile uint16_t *video = (uint16_t *)VIDEO;
 
 #define COLUMNS 80
 #define LINES 24
@@ -34,8 +33,6 @@ static volatile uint16_t *video = (uint16_t *)VIDEO;
 #define MAX_CONTAINER_SIZE 0x4
 #define MAX_SCREEN_NO COLUMNS
 
-static int xpos = 0;
-static int ypos = 0;
 
 #include <multitasking.h>
 #include <display.h>

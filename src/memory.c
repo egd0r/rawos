@@ -35,7 +35,7 @@ void *sbrk(int n) {
     Function maps physical pages to bitmap
 */
 
-struct multiboot_tag_mmap * init_memory_map(void *mbr_addr) {
+struct multiboot_tag_mmap * init_memory_map(unsigned long mbr_addr) {
     // Attempting to parse multiboot information structure
     uint32_t size; // information struct is 8 bytes aligned, each field is u32 
     size = *((uint32_t *)mbr_addr); // First 8 bytes of MBR 
@@ -122,7 +122,7 @@ void set_bit(uint64_t addr, uint64_t bit) {
     if (bit == 1)
         ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] | (uint64_t)1<<bitIndex;
     else
-        ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] ^ (uint64_t)1<<bitIndex;
+        ((uint64_t *)BITMAP_VIRTUAL)[pageIndex] = (uint64_t)((uint64_t *)BITMAP_VIRTUAL)[pageIndex] & ~((uint64_t)1<<bitIndex);
 }
 
 void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
