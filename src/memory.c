@@ -24,86 +24,9 @@ void munmap(void *ptr, int size) {
 }
 
 void *sbrk(int n) {
-    int ret = heap_current;
+    void *ret = heap_current;
     heap_current += n;
-    return ret;
-}
-
-/*
-    Takes MBR ADDR and returns memory map struct with memory sections
-
-    Function maps physical pages to bitmap
-*/
-
-struct multiboot_tag_mmap * init_memory_map(unsigned long mbr_addr) {
-    // Attempting to parse multiboot information structure
-    uint32_t size; // information struct is 8 bytes aligned, each field is u32 
-    size = *((uint32_t *)mbr_addr); // First 8 bytes of MBR 
-
-    struct multiboot_tag *tag;
-
-    int largestFreeSize = 0;
-
-    // kprintf("Kernel starts physaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
-    for (tag = (struct multiboot_tag*) (mbr_addr + 8);
-         tag->type != MULTIBOOT_TAG_TYPE_END;
-         tag = (struct multiboot_tag*) ((multiboot_uint8_t *) tag
-                                        + ((tag->size + 7) & ~7)))
-    {
-      switch (tag->type)
-        {
-            case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
-                struct multiboot_tag_basic_meminfo *mem = (struct multiboot_tag_basic_meminfo*) tag;
-                kprintf("Basic memory area %x - %x\n",
-                       mem->mem_lower,
-                       mem->mem_upper);
-                break;
-            case MULTIBOOT_TAG_TYPE_MMAP: 
-                multiboot_memory_map_t *mmap;
-                struct multiboot_tag_mmap *mmapTag = (struct multiboot_tag_mmap*) tag;
-
-                int i=0;
-                for (multiboot_memory_map_t *mmap = mmapTag->entries;
-                        (multiboot_uint8_t*) mmap < (multiboot_uint8_t*) tag + tag->size; // Contiguous? Will this work? Changed from using 'tag'
-                        mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
-                            + mmapTag->entry_size), i++)
-                {
-                    // kprintf("Memory area starting at %x with "
-                    //         "length of %x and type %x\n",
-                    //         (mmap->addr),
-                    //         (mmap->len),
-                    //         mmap->type);
-
-
-                    // With each mmap, size / 4096 is set as either 1s or 0s in bitmap
-                    map_physical_pages(
-                        (mmap->type == 1) ? 0 : 1
-                        , mmap->len, mmap->addr);
-                }
-
-                break;
-            case MULTIBOOT_TAG_TYPE_MODULE:
-                struct multiboot_tag_module *initrd = (struct multiboot_tag_mmap*) tag;
-                // initrd += KERNEL_OFFSET; // Mapping to higher space
-                initrd_start = initrd->mod_start;
-
-                kprintf("Module start: %d\n", initrd->mod_start);
-                kprintf("Module end: %d\n", initrd->mod_end);
-                kprintf("Module size: %d\n", initrd->size);
-                kprintf("Module type: %d\n", initrd->type);
-                int no = get_number_of_files(initrd->mod_start);
-                kprintf("Number of files in the module %d\n", no);
-
-            default:
-                kprintf("Unkown tag %x, size %x\n", tag->type, tag->size);
-                break;
-        }
-
-    }
-    //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
-    // map_physical_pages(1, 0x200000*9, 0); // Allocating what's already been mapped in HUGEPAGES - so overkill lol
-    kprintf("%x %x\n", &KERNEL_START, &KERNEL_END);
-
+    return (void *)ret;
 }
 
 /*
@@ -131,8 +54,6 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
     while (base < KERNEL_MAX_PHYS) {
         base += 0x1000; //Add 4096 to base until outside kernel space allocated already
     }
-    uint64_t *currentBitmapPtr = BITMAP_VIRTUAL; //Pointer to 64 bit chunk
-
 
     int i=0;
     //
@@ -144,11 +65,83 @@ void map_physical_pages(int allocated, uint64_t length, uint64_t base) {
         set_bit(base+(i*4096), allocated);
     }
 
-    BITMAP_end = base+i;
+    BITMAP_end = (void *)(base+i);
 
     
     // kprintf("%x %d actual physical pages mapped as %d\n", base, i, allocated);
 }
+
+/*
+    Takes MBR ADDR and returns memory map struct with memory sections
+
+    Function maps physical pages to bitmap
+*/
+
+void init_memory_map(unsigned long mbr_addr) {
+    // Attempting to parse multiboot information structure
+    struct multiboot_tag *tag;
+    // kprintf("Kernel starts physaddr: %x\nEnds at physaddr: %x\n", &KERNEL_START, &KERNEL_END);
+    for (tag = (struct multiboot_tag*) (mbr_addr + 8);
+         tag->type != MULTIBOOT_TAG_TYPE_END;
+         tag = (struct multiboot_tag*) ((multiboot_uint8_t *) tag
+                                        + ((tag->size + 7) & ~7)))
+    {
+      switch (tag->type)
+        {
+            case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO:
+                struct multiboot_tag_basic_meminfo *mem = (struct multiboot_tag_basic_meminfo*) tag;
+                kprintf("Basic memory area %x - %x\n",
+                       mem->mem_lower,
+                       mem->mem_upper);
+                break;
+            case MULTIBOOT_TAG_TYPE_MMAP: 
+                struct multiboot_tag_mmap *mmapTag = (struct multiboot_tag_mmap*) tag;
+
+                int i=0;
+                for (multiboot_memory_map_t *mmap = mmapTag->entries;
+                        (multiboot_uint8_t*) mmap < (multiboot_uint8_t*) tag + tag->size; // Contiguous? Will this work? Changed from using 'tag'
+                        mmap = (multiboot_memory_map_t *) ((unsigned long) mmap
+                            + mmapTag->entry_size), i++)
+                {
+                    // kprintf("Memory area starting at %x with "
+                    //         "length of %x and type %x\n",
+                    //         (mmap->addr),
+                    //         (mmap->len),
+                    //         mmap->type);
+
+
+                    // With each mmap, size / 4096 is set as either 1s or 0s in bitmap
+                    map_physical_pages(
+                        (mmap->type == 1) ? 0 : 1
+                        , (uint64_t)(mmap->len), (uint64_t)(mmap->addr));
+                }
+
+                break;
+            case MULTIBOOT_TAG_TYPE_MODULE:
+                struct multiboot_tag_module *initrd = (struct multiboot_tag_module *) tag;
+                // initrd += KERNEL_OFFSET; // Mapping to higher space
+                initrd_start = initrd->mod_start;
+
+                kprintf("Module start: %d\n", initrd->mod_start);
+                kprintf("Module end: %d\n", initrd->mod_end);
+                kprintf("Module size: %d\n", initrd->size);
+                kprintf("Module type: %d\n", initrd->type);
+                int no = get_number_of_files(initrd->mod_start);
+                kprintf("Number of files in the module %d\n", no);
+
+            default:
+                kprintf("Unkown tag %x, size %x\n", tag->type, tag->size);
+                break;
+        }
+
+    }
+    //Mapping kernel as allocated ALWAYS - don't want corrupted bitmap
+    // map_physical_pages(1, 0x200000*9, 0); // Allocating what's already been mapped in HUGEPAGES - so overkill lol
+    kprintf("%x %x\n", &KERNEL_START, &KERNEL_END);
+
+}
+
+
 
 // For contiguous physical allocations, DMA etc
 // Size is multiples of 4096
@@ -158,7 +151,7 @@ void * kalloc_physical(size_t size) {
     int counter = 0;
     // Need to keep track of when counter goes from 0 -> 1 (start, value to return)
     // Need to return start of map, that is all but set bits at that physical address before with lovely function
-    void *ret;
+    uint64_t ret;
     for (int i=0; i<0x20000; i++) {
         uint64_t pages = ((uint64_t *)BITMAP_VIRTUAL)[i];
         for (int ii=0; ii<64; ii++) {
@@ -172,7 +165,7 @@ void * kalloc_physical(size_t size) {
                     //Map size at start
                     for (int i=0; i<((size%PHYSICAL_PAGE_SIZE == 0) ? size/4096 : 1+(size/4096)); i++)
                         set_bit(ret, 1);
-                    return ret;
+                    return (void *)ret;
                 }
 
             } else {
@@ -182,11 +175,11 @@ void * kalloc_physical(size_t size) {
     }
 
     kprintf("No space for this allocation.");
-    return ret;
+    return (void *)ret;
 }
 
 // Only needs to free individual pages, virtual mem manager keeping track of physical allocations given to it!
-void kfree_physical(void *ptr) {
+void kfree_physical(uint64_t ptr) {
     set_bit(ptr, 0);
 }
 
@@ -200,29 +193,29 @@ void memset(uint64_t ptr, uint8_t val, uint64_t size) {
 
 // Essentially can be used as sbrk with malloc, just need managing heap space, linked list
 void *allocate_page(size_t size) {
-    uint64_t *page_dir_ptr = PAGE_DIR_VIRT; //Used for indexing P4 directly
+    uint64_t *page_dir_ptr = (uint64_t *)PAGE_DIR_VIRT; //Used for indexing P4 directly
     int i=0;
     // Loop through L4 looking for present L3
-    for (i=0; i<511 && ((page_dir_ptr[i] & PRESENT == 0)); page_dir_ptr++);
+    for (i=0; i<511 && (((page_dir_ptr[i] & PRESENT) == 0)); page_dir_ptr++);
 
     //i holds index into L4
     //i must be placed: 0o177777_777_777_777_000_0000 fucking octal
     //                  0xFFFF FFFF FFE0 0000 ; E = 1110
-    uint64_t *page_l3 = (PAGE_DIR_VIRT & ~0x7FFFF) & i<<12; // Unsetting index and oring l3_index 
+    uint64_t *page_l3 = (uint64_t *)((PAGE_DIR_VIRT & ~0x7FFFF) & i<<12); // Unsetting index and oring l3_index 
 
-    for (i=0; i<511 && ((page_l3[i] & PRESENT == 0)); page_l3++);
+    for (i=0; i<511 && (((page_l3[i] & PRESENT) == 0)); page_l3++);
     
-    uint64_t *page_l2 = (PAGE_DIR_VIRT & ~0xFFFFFFF) & i<<(12+9); // Unsetting index and oring l3_index 
+    uint64_t *page_l2 = (uint64_t *)((PAGE_DIR_VIRT & ~0xFFFFFFF) & i<<(12+9)); // Unsetting index and oring l3_index 
 
-    for (i=0; i<511 && ((page_l2[i] & PRESENT == 0)); page_l2++);
+    for (i=0; i<511 && (((page_l2[i] & PRESENT) == 0)); page_l2++);
 
-    uint64_t page_l1 = (PAGE_DIR_VIRT & ~0x7FFFFFFFFF) & i<<(12+9+9); // Unsetting index and oring l3_index 
+    uint64_t *page_l1 = (uint64_t *)((PAGE_DIR_VIRT & ~0x7FFFFFFFFF) & i<<(12+9+9)); // Unsetting index and oring l3_index 
 
-    uint64_t *space = (uint64_t *)free_page_space(page_l1, size);
+    uint64_t *space = (uint64_t *)free_page_space((uint64_t)page_l1, size);
 
     if (space == BAD_PTR) {
         kprintf("uh oh!!!\n");
-        return;
+        return BAD_PTR;
     }
 
     // We can safely allocate these pages space
@@ -244,7 +237,7 @@ uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
 
     if (LVL == PT_LVL1) {
         // If we're at end walk final table and return free space
-        uint64_t *space = (uint64_t *)free_page_space(pt_ptr, n);
+        uint64_t *space = (uint64_t *)free_page_space((uint64_t)pt_ptr, n);
 
         if (space == BAD_PTR) {
             kprintf("uh oh!!!\n");
@@ -271,7 +264,7 @@ uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
                 - Index is returned, loop is broken if NULL is not returned
     */
     int shift, new=0;
-    void *free_space;
+    uint64_t *free_space;
     for (int i=0; i<511; i++) {
         // Just continue if anything comes up as hugepage
         // Can add allocations for HUGE_PAGE later
@@ -286,29 +279,29 @@ uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n) {
         switch (LVL) {
             case PT_LVL2:
                 // Find ptr of level 1 with index
-                new_pt_ptr = ((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL1) | ((uint64_t)pt_ptr & ~PT_LVL1);
+                new_pt_ptr = (uint64_t *)(((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL1) | ((uint64_t)pt_ptr & ~PT_LVL1));
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL1) | i<<(12+9+9); // Unsetting index and oring l3_index 
                 // If below returns NOT NULL then index i can be used to
                 // add to virtual address
-                if (new == 1) memset(new_pt_ptr, 0, 512);
-                free_space = page_alloc(new_pt_ptr, PT_LVL1, n);
+                if (new == 1) memset((uint64_t)new_pt_ptr, 0, 512);
+                free_space = (uint64_t *)page_alloc(new_pt_ptr, PT_LVL1, n);
                 shift = 12+9;
             break;
             case PT_LVL3:
                 // Find ptr of level 2 with index
-                new_pt_ptr = ((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL2) | ((uint64_t)pt_ptr & ~PT_LVL2);
+                new_pt_ptr = (uint64_t *)(((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL2) | ((uint64_t)pt_ptr & ~PT_LVL2));
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL2) | i<<(12+9); // Unsetting index and oring l3_index 
-                if (new == 1) memset(new_pt_ptr, 0, 512);
-                free_space = page_alloc(new_pt_ptr, PT_LVL2, n);
+                if (new == 1) memset((uint64_t)new_pt_ptr, 0, 512);
+                free_space = (uint64_t *)page_alloc(new_pt_ptr, PT_LVL2, n);
                 shift = 12+9+9;
             break;
             case PT_LVL4:
                 if (i==510) continue; // Don't want to go here
                 // Find ptr of level 3 with index
-                new_pt_ptr = ((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL3) | ((uint64_t)pt_ptr & ~PT_LVL3);
-                if (new == 1) memset(new_pt_ptr, 0, 512);
+                new_pt_ptr = (uint64_t *)(((((uint64_t)pt_ptr << 9) | i << 12) & PT_LVL3) | ((uint64_t)pt_ptr & ~PT_LVL3));
+                if (new == 1) memset((uint64_t)new_pt_ptr, 0, 512);
                 // new_pt_ptr = (PAGE_DIR_VIRT & ~PT_LVL3) | i<<12; // Unsetting index and oring l3_index 
-                free_space = page_alloc(new_pt_ptr, PT_LVL3, n);
+                free_space = (uint64_t *)page_alloc(new_pt_ptr, PT_LVL3, n);
                 shift = 12+9+9+9;
             break;
             default:
@@ -549,7 +542,6 @@ void *create_new_mmap_space(int bytes) {
 void *create_new_heap_space() { 
     //Condition checks whether new heap is adjecent in memory to previous heap created
     //Allows coalescing of heap spaces
-    void *prev = sbrk(0);
     //Creating heap metadata
     // chunk_n tail_heap = { .size=(0 | (ALLOCATED_MASK)), .next=NULL };
     chunk_n tail_heap;

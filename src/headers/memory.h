@@ -26,7 +26,7 @@ extern uint64_t KERNEL_END;
 
 #define KERNEL_LVL2_MAP 0xFFFFFF7FBFFFE000
 
-struct multiboot_tag_mmap *init_memory_map(unsigned long mbr_addr);
+void init_memory_map(unsigned long mbr_addr);
 uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n);
 
 #define KALLOC_PHYS() kalloc_physical(1)
@@ -34,7 +34,7 @@ uint64_t page_alloc(uint64_t *pt_ptr, uint64_t LVL, uint16_t n);
 void *sbrk(int n);
 
 void * kalloc_physical(size_t size); //Sets n physical pages as allocated and returns physical address to be placed in page table
-void kfree_physical(void *ptr);
+void kfree_physical(uint64_t ptr);
 void memset(uint64_t ptr, uint8_t val, uint64_t size);
 void memcpy(uint8_t *from, uint8_t *to, uint64_t size);
 // LVLs defined above

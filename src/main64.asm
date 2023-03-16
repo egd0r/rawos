@@ -316,19 +316,6 @@ switch_task:
     push r10 ;; Pushing RIP to stack for return
     ret
 
-
-load_user_segment:
-    mov ax, 0x10
-    mov ds, ax
-
-    ret
-
-load_kernel_segment:
-    mov ax, 0x20
-    mov ds, dx
-
-    ret
-
 global flush_tlb
 flush_tlb:
     mov rax, cr3

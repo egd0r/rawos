@@ -19,11 +19,11 @@ void sys_printf(const char *format, ...) {
     va_end(arg);
 }
 
-char sys_getch(char *buffer) {
+void sys_getch(char *buffer) {
     asm __volatile__("int $0x80" : : "a" (3), "b" (buffer));
 }
 
-char sys_sleep(int secs) {
+void sys_sleep(int secs) {
     asm __volatile__("int $0x80" : : "a" (35), "b" (secs));
 }
 
@@ -87,25 +87,18 @@ int kmain(unsigned long mbr_addr) {
     // Initialises memory map and finds initrd
     init_memory_map(mbr_addr);
 
-    extern uint64_t initrd_start;
-    // init_tar_fs(initrd_start);
-
     create_task(0x00);
 
     // Allocate at 0
-    uint64_t ptr = kalloc_physical(1);
-    ptr = kalloc_physical(1);
-    ptr = kalloc_physical(1);
-    ptr = kalloc_physical(1);
+    uint64_t ptr = (uint64_t)kalloc_physical(1);
+    ptr = (uint64_t)kalloc_physical(1);
+    ptr = (uint64_t)kalloc_physical(1);
+    ptr = (uint64_t)kalloc_physical(1);
     // Free at 0
-    kfree_physical((void *)ptr);
+    kfree_physical(ptr);
 
     int *arr = new_malloc(sizeof(int)*5);
     arr[1] = 5;
-
-    uint64_t main_cr3 = (uint64_t)get_pagetable_entry(0xffffff7fbfdfe000) & ~0xFFF;
-    uint64_t taskA_phys = (uint64_t)get_pagetable_entry(&taskA);
-
 
     *((int *)0xb8900) = mbr_addr;  
     
@@ -157,6 +150,8 @@ int strncmp(char *s, char *t, int num) {
     }
     else if (*s != *t)
         return *s - *t;   
+
+    return 1;
 }
 
 

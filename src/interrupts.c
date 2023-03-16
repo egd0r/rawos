@@ -19,14 +19,8 @@ uint64_t ms_since_boot = 0x00;
 uint64_t frac_ms_since_boot = 0x00;
 
 uint64_t time_between_irq_ms = 30;
-// uint64_t time_between_irq_frac = 0x0013DF85E201BD446E9A; // 10.xx ms
-uint64_t time_between_irq_frac = 0x001E357FA731214C0A0A; // 30.xx ms
-
-void get_virt_test_i() {
-	print_reg("IDTR", (uint64_t)(&idtr));
-	print_reg("IDT", (uint64_t)idt);
-}
-
+// uint64_t time_between_irq_frac = 0x0013DF85E201BD44; // 10.xx ms
+uint64_t time_between_irq_frac = 0x001E357FA731214C; // 30.xx ms
 
 void print_reg(char *name, uint64_t reg) {
 	uint32_t hi = (reg & 0xFFFFFFFF00000000) >> 32;
@@ -48,23 +42,13 @@ void print_reg_state(INT_FRAME frame) {
 	print_reg("CS ", frame.cs);
 }
 
-extern load_kernel_segment();
-extern load_user_segment();
 extern void load_cr3(uint64_t pt);
 extern void load_cr3_test(uint64_t pt);
 TASK_LL * task_switch_int(INT_FRAME *frame) {
 	// Pass to scheduler, get new context
 	TASK_LL *new_task = schedule(frame);
 	if (new_task == NULL) return current_item;
-
-	if (new_task->PID == 0) {
-		// load_kernel_segment();
-	} else {
-		// load_user_segment();
-	}
-
-	// load_cr3(new_task->cr3);
-
+	
 	return new_task;
 }
 
@@ -79,25 +63,25 @@ void allocate_here(uint64_t virt_addr, uint16_t flags) {
 	virt_addr >>= 9;
 	int l4_index = (virt_addr >> 9) & 0x1FF;
 	
-    uint64_t *page_ptr = PAGE_DIR_VIRT; //Used for indexing P4 directly
+    uint64_t *page_ptr = (uint64_t *)PAGE_DIR_VIRT; //Used for indexing P4 directly
 
 	if ((page_ptr[l4_index] & PRESENT) == 0) {
 		page_ptr[l4_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
-    page_ptr = ((((uint64_t)page_ptr << 9) | l4_index << 12) & PT_LVL3) | ((uint64_t)page_ptr & ~PT_LVL3);
+    page_ptr = (uint64_t *)(((((uint64_t)page_ptr << 9) | l4_index << 12) & PT_LVL3) | ((uint64_t)page_ptr & ~PT_LVL3));
 
 	if ((page_ptr[l3_index] & PRESENT) == 0) {
 		page_ptr[l3_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
-	page_ptr = ((((uint64_t)page_ptr << 9) | l3_index << 12) & PT_LVL2) | ((uint64_t)page_ptr & ~PT_LVL2);
+	page_ptr = (uint64_t *)(((((uint64_t)page_ptr << 9) | l3_index << 12) & PT_LVL2) | ((uint64_t)page_ptr & ~PT_LVL2));
 	
 	if ((page_ptr[l2_index] & PRESENT) == 0) {
 		page_ptr[l2_index] = (uint64_t)KALLOC_PHYS() | flags;
 	}
 
-	page_ptr = ((((uint64_t)page_ptr << 9) | l2_index << 12) & PT_LVL1) | ((uint64_t)page_ptr & ~PT_LVL1);
+	page_ptr = (uint64_t *)(((((uint64_t)page_ptr << 9) | l2_index << 12) & PT_LVL1) | ((uint64_t)page_ptr & ~PT_LVL1));
 
 	if ((page_ptr[l1_index] & PRESENT) != 0) kprintf("error in allocate here");
 	else page_ptr[l1_index] = (uint64_t)KALLOC_PHYS() | flags;
@@ -171,7 +155,6 @@ void kb_handler() {
 	picEOI(0x21-PIC1_OFFSET);
 }
 
-__attribute__((interrupt));
 void interrupt_handler() {
 	__asm__ volatile ("cli");
 	kprintf("Interrupt detected"); // Move program counter down to skip offending instruction??
@@ -179,11 +162,12 @@ void interrupt_handler() {
 }
 
 //Interrupt handlers
+extern void syscall_handler(void **frame);
 extern void syscall_stub();
 int counter = 0;
 void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 	// Switching to interrupt stack
-	current_item->stack = frame;
+	current_item->stack = (uint8_t *)frame;
 	// kprintf("Recoverable interrupt 0x%2x\n", frame.vector);
 	void *ret = frame;
 	if (frame->vector == 0x20) {
@@ -242,7 +226,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		__asm__ volatile ("hlt");
 	} else if (frame->vector == 0x0E) {
 		if (current_item == NULL || current_item->PID == 0 || 
-		((arg >= HEAP_START) || (arg <= current_item->heap_current) ))
+		((arg >= (uint64_t)(HEAP_START)) || ((arg <= (uint64_t)(current_item->heap_current))) ))
 			allocate_here(arg, RW | PRESENT);
 	} else if (frame->vector == 0x21) {
 		// Caused TF -> GPF
@@ -251,7 +235,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 		kb_handler();
 		// load_cr3(frame->cr3); // Changing to new process address space where stack is defined
 	} else if (frame->vector == 0x80) {
-		syscall_handler(&ret);
+		syscall_handler((void **)(&ret));
 	} else {
 		cls();
 		kprintf("Interrupted %d\n", frame->vector);

@@ -13,7 +13,7 @@ int current_display = 0;
 
 TASK_GRP init_task_grp = {0};
 
-uint8_t *heap_start = 0x0005000000;
+uint8_t *heap_start = (uint8_t *)0x0000000050000000;
 uint8_t *heap_current;
 
 int PID_COUNTER = 2;
@@ -118,15 +118,16 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
 }
 
 extern uint64_t page_table_l4; // Kernel data
+extern void load_cr3(uint64_t pt);
 // Loading state into new address space
 uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     // Getting physical address of mapping
-    uint64_t new_task_phys = get_pagetable_entry(new_task);
+    uint64_t new_task_phys = (uint64_t)get_pagetable_entry((uint64_t)new_task);
     // Place this within tasks address space
     // Cause PF to allocate new space
 
     // Load address space of new task
-    load_cr3(cr3);
+    load_cr3((uint64_t)cr3);
     *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
     // Accessing allocated page
     // *((uint64_t *)PAGE_DIR_VIRT)
@@ -134,10 +135,10 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     proc_space[1] = new_task_phys; //Mapping to own process context done here
 
     INT_FRAME new_state = {0};
-    uint8_t *stack_pos = 0x80000ff0;
+    uint8_t *stack_pos = (uint8_t *)0x0000000080000ff0;
 
     stack_pos -= sizeof(INT_FRAME);
-    new_state.cr3 = cr3;
+    new_state.cr3 = (uint64_t)cr3;
     new_state.vector = 0x20;
     new_state.rip = (uint64_t)entry_point;
     new_state.eflags = 0x202;
@@ -168,23 +169,21 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
     
     // Assert screen create
 
-    TASK_LL *new_task = kp_alloc(1);
+    TASK_LL *new_task = (TASK_LL *)kp_alloc(1);
 
     if (entry_point != 0x00) {
-        uint64_t *l4_pt_virt = p_alloc(PAGE_DIR_VIRT, 1);
-        uint64_t l4_pt_phys = get_pagetable_entry(l4_pt_virt);
+        uint64_t *l4_pt_virt = (uint64_t *)p_alloc(PAGE_DIR_VIRT, 1);
+        uint64_t l4_pt_phys = (uint64_t)get_pagetable_entry((uint64_t)l4_pt_virt);
         // Self referencing
         l4_pt_virt[510] = l4_pt_phys;
         // Mapping kernel structures
-        l4_pt_virt[511] = ((uint64_t)(&page_table_l3))&0xFFFFF | PRESENT | RW;
-        new_task->cr3 = (uint64_t *)(l4_pt_phys & ~0xFFF);
+        l4_pt_virt[511] = (((uint64_t)(&page_table_l3))&0xFFFFF) | PRESENT | RW;
+        new_task->cr3 = (uint64_t)(l4_pt_phys & ~0xFFF);
     } else {
-        new_task->cr3 = (uint64_t *)((uint64_t)(&page_table_l4)&0xFFFFF);
+        new_task->cr3 = (uint64_t)((uint64_t)(&page_table_l4)&0xFFFFF);
     }
     
-    INT_FRAME new_state = {0};
-
-    new_task->stack = place_state(new_task->cr3, entry_point, new_task);
+    new_task->stack = place_state((void *)new_task->cr3, entry_point, new_task);
 
 
     // FILL VALUES
@@ -195,7 +194,7 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
         new_task->heap_current = heap_current + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12);
     } else { 
         new_task->PID = PID_COUNTER++;
-        new_task->heap_current = HEAP_START + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
+        new_task->heap_current = ((uint8_t *)HEAP_START) + ((VIDEO_MEM_PAGES+PROC_PAGE_SIZE) << 12); // Add one to page index to make space for video output
     }
     new_task->switches = 0;
     
@@ -221,7 +220,7 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
     kprintf("Created a new task with PID %d\n", new_task->PID);    
     init_task_grp.number_of_tasks++;
 
-    return;    
+    return 1;    
 }
 
 // Only available to interrupts
@@ -235,20 +234,13 @@ TASK_LL * TASK(int pid) {
 }
 
 TASK_LL * find_prev_task(int pid) {
-    for (TASK_LL *temp = current_item; temp=temp->next; temp->PID != current_item->PID) {
+    for (TASK_LL *temp = current_item; temp->PID != current_item->PID; temp=temp->next) {
         if (temp->next->PID == pid) {
             return temp;
         }
     }
     return NULL;
 }
-
-// This should call schedule and get a new task - trigger different schedule interrupt? Have asm routine for switching tasks?
-int block_task(TASK_LL *task) {
-    task->task_state = BLOCKED;
-    // Add to blocked
-}
-
 
 int kill_task(int pid) {
     if (pid == 0) return 1; // Can't kill init
@@ -273,7 +265,7 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     // *(current_item->state) = *curr_proc_state; // Temp
 
     // This context is saved automatically
-    current_item->stack = curr_proc_state; // Set to new rsp to not overwrite data
+    current_item->stack = (uint8_t *)curr_proc_state; // Set to new rsp to not overwrite data
 
     // current_item->stack -= sizeof(CPU_STATE);
     // *((CPU_STATE *)current_item->stack) = curr_proc_state; // Saving new context

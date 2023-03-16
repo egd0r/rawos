@@ -1,6 +1,6 @@
 #pragma once
 #include "types.h"
-#define PAGE_DIR_VIRT 0xFFFFFF7FBFDFE000 // 2nd last entry maps to itself
+#define PAGE_DIR_VIRT (uint64_t)0xFFFFFF7FBFDFE000 // 2nd last entry maps to itself
                     //0xFFFFFFFFC0000000
 /*                                L3        L2        L1          
     Page Dir Virt = 0xFFFF  1111 1111 1111 1111 1111 1111 11    
@@ -12,7 +12,7 @@
 #define RW          0x02
 #define HUGE_PAGE   0x80
 #define FLAGS       0xFFF
-#define BAD_PTR     (uint64_t)0xDEADBEEF
+#define BAD_PTR     (uint64_t *)0x00000000DEADBEEF
 
 typedef struct PageTable {
     uint64_t entries[512];
