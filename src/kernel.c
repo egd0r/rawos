@@ -5,8 +5,6 @@
 #include <paging.h>
 #include <memory.h>
 #include <multitasking.h>
-//For testing
-#include <ata.h>
 #include <io.h>
 #include <stdarg.h>
 

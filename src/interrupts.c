@@ -314,8 +314,6 @@ void activate_interrupts() {
 
 
 
-#include <ata.h>
-
 void detect(uint16_t port, int master) {
     // Indentifying drive
 
