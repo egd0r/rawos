@@ -27,9 +27,6 @@ SCR_CHAR to_char_mod(int c, int ATTRIBUTES) {
     return ret;
 }
 
-#define DEFAULT_CHAR(c) to_char_mod(c, ATT_BLACK << 4 | ATT_LT_GREY)
-#define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
-#define CLEAR_CHAR() to_char_mod(' ', ATT_BLACK << 4 | ATT_BLACK)
 
 void putchar_current(int c) {
     putchar(DEFAULT_CHAR(c), current_screen->id, current_screen->selected_cont);
@@ -74,6 +71,8 @@ void putchar_proc(int c, int pid) {
         }
     }
 }
+
+
 
 extern SCREEN_O * find_screen(int id);
 void putchar (SCR_CHAR char_mod, int screen_id, int cont_id) {

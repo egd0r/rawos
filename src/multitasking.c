@@ -32,11 +32,14 @@ void unlock_scheduler() {
 }
 
 extern uint64_t page_table_l4; // Kernel data
+extern void load_cr3(uint64_t pt);
 uint16_t poll_pit();
 TASK_LL * sleep(int secs) {
     // Add current process to blocked queue
+    load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
     current_item->wake_after_ms = secs*1000;
     current_item->proc_time += poll_pit()/PIT_RELOAD;
+    current_item->task_state = BLOCKED;
 
     // Add seconds to sleep for
     if (blocked_start == NULL) {
@@ -44,8 +47,12 @@ TASK_LL * sleep(int secs) {
         blocked_end = current_item;
         blocked_start->next = blocked_end;
     } else {
+        current_item->next = blocked_end->next;
+        current_item->prev = blocked_end;
         blocked_end->next = current_item;
         blocked_end = current_item;
+        blocked_start->prev = blocked_end;
+        blocked_end->next = blocked_start;
     }
     // Schedule next process from ready queue
 
@@ -117,8 +124,6 @@ TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
     return to_remove;
 }
 
-extern uint64_t page_table_l4; // Kernel data
-extern void load_cr3(uint64_t pt);
 // Loading state into new address space
 uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     // Getting physical address of mapping
@@ -128,7 +133,7 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
 
     // Load address space of new task
     load_cr3((uint64_t)cr3);
-    *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
+    // *((uint64_t *)(PROCESS_CONT_ADDR)) = 0; // Allocating page by causing a page fault
     // Accessing allocated page
     // *((uint64_t *)PAGE_DIR_VIRT)
     uint64_t *proc_space = ((uint64_t *)0xffffff0000028000);
@@ -164,7 +169,7 @@ uint8_t * place_state(void * cr3, void * entry_point, TASK_LL *new_task) {
     Places new task at end of queue
 */
 extern uint64_t page_table_l3; // Kernel data
-int create_task(void *entry_point/*, void *screen_create_function*/) {
+int create_task(void *entry_point, int sid) {
     // Allocating new page for L4 table
     
     // Assert screen create
@@ -198,8 +203,8 @@ int create_task(void *entry_point/*, void *screen_create_function*/) {
     }
     new_task->switches = 0;
     
-    if (entry_point != k_taskbar) new_task->screen_id = FULL_DISPLAY(new_task->PID);
-    else new_task->screen_id = taskbar_disp(new_task->PID);
+    if (entry_point == k_taskbar) new_task->screen_id = taskbar_disp(new_task->PID);
+    else if (sid == -1) new_task->screen_id = FULL_DISPLAY(new_task->PID);
 
     new_task->next = new_task;
     new_task->prev = new_task;

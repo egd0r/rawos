@@ -55,7 +55,7 @@ void taskB() {
     test[0] = 5;
     while(1) {
         sys_printf("B ");
-        sys_sleep(1);
+        sys_sleep(5);
     }
 }
 
@@ -85,7 +85,7 @@ int kmain(unsigned long mbr_addr) {
     // Initialises memory map and finds initrd
     init_memory_map(mbr_addr);
 
-    create_task(0x00);
+    create_task(0x00, -1);
 
     // Allocate at 0
     uint64_t ptr = (uint64_t)kalloc_physical(1);
@@ -100,10 +100,10 @@ int kmain(unsigned long mbr_addr) {
 
     *((int *)0xb8900) = mbr_addr;  
     
-    create_task(&taskA);
-    create_task(&taskB);
-    create_task(&taskC);
-    create_task(&k_taskbar);
+    create_task(&taskA, -1);
+    create_task(&taskB, -1);
+    create_task(&taskC, -1);
+    create_task(&k_taskbar, -1);
     cls();
     activate_interrupts();
 
@@ -137,19 +137,15 @@ int kmain(unsigned long mbr_addr) {
     return 0;
 }
 
-int strncmp(char *s, char *t, int num) {
-   for ( ; num >0;  s++, t++, num--)
-        if (*s == 0)
+int strncmp(const char* s1, const char* s2, size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+        if (s1[i] != s2[i]) {
+            return s1[i] - s2[i];
+        } else if (s1[i] == '\0') {
             return 0;
-
-    if (*s == *t) {
-        ++s;
-        ++t;
+        }
     }
-    else if (*s != *t)
-        return *s - *t;   
-
-    return 1;
+    return 0;
 }
 
 
@@ -172,13 +168,62 @@ void ps() {
         print_proc(temp);
         if (temp == blocked_end) break;
     }
+    sys_printf("\n");
 }
 
 void clear() {
     cls();
 }
 
+char * progress_until_char(char *str, char find) {
+    for (; *str!=find; str++) {
+        if (*str == '\0') return 0;
+    }
+    return str;
+}
+
+void create(char *command) {
+    char *task_req = 0x00;
+    if ((task_req = progress_until_char(command, ' ')) == 0) return;
+    task_req++;
+    char *screen = 0x00;
+    if ((screen = progress_until_char(task_req, ' ')) == 0) return;
+    *screen = '\0';
+    screen++;
+
+    // sys_printf("New task to make %s\n", taskA);
+    // sys_printf("New screen to add to %s\n", screen);
+
+    CLI();
+    if (strncmp(task_req, "a", 1) == 0) {
+        create_task(&taskA, -1);
+    } else if (strncmp(task_req, "b", 1) == 0) {
+        create_task(&taskB, -1);
+    }
+    else if (strncmp(task_req, "c", 1) == 0) {
+        create_task(&taskC, -1);
+    } else printf("Task unrecognised.\n");
+    STI();
+}
+
+void help() {
+    sys_printf("\n");
+    sys_printf("Commands available:\n");
+    sys_printf("    ps    - List active processes\n");
+    sys_printf("    clear - Clear screen\n");
+    sys_printf("    help  - Print this screen\n");
+    sys_printf("    create- Create a new process Args: proc, screen\n");
+    sys_printf("            Available processes: A, B, C\n");
+    sys_printf("    kill  - Kill a process Args: pid\n");
+    sys_printf("\n");
+}
+
 void process_command(char *command) {
+    sys_printf("\n");
     if (strncmp(command, "ps", 2) == 0) ps();
     else if (strncmp(command, "clear", 5) == 0) clear();
+    else if (strncmp(command, "help", 4) == 0) help();
+    else if (strncmp(command, "create", 6) == 0) create(command);
+
+    else sys_printf("Unrecognised command: %s\n", command);
 }

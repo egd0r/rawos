@@ -8,7 +8,7 @@ void syscall_handler(INT_FRAME **frame) {
     // kprintf("ello there chappy\n");
     // kprintf("Syscall %d with arg %d\n", frame.rax, frame.rbx);
 
-    switch ((*frame)->rdx) {
+    switch ((*frame)->rax) {
 
         case 3:
             getch((char *)(*frame)->rbx);
@@ -18,13 +18,12 @@ void syscall_handler(INT_FRAME **frame) {
             break;
         case 35:
             break;
-
     }
 
-    if ((*frame)->rdx == 35) {
+    if ((*frame)->rax == 35) {
         TASK_LL *new_task = sleep((*frame)->rbx);
-        *frame = (void *)(new_task->stack);
         load_cr3(new_task->cr3);
+        *frame = (void *)(new_task->stack);
     }
 
 }

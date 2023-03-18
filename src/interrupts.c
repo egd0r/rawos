@@ -189,28 +189,44 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 
 		// Checking blocked queue and unblocking processes as needed
 		TASK_LL *prev = NULL;
-		for (TASK_LL *temp_blkd = blocked_start; prev != blocked_end && blocked_start != NULL; temp_blkd=temp_blkd->next) {
+		for (TASK_LL *temp_blkd = blocked_start; blocked_start != NULL && (temp_blkd != prev || temp_blkd != ready_end); ) {
 			temp_blkd->wake_after_ms -= time_between_irq_ms;
+			prev = temp_blkd;
 			if (temp_blkd->wake_after_ms <= 0) {
-				ready_end->next = temp_blkd;
-				ready_end = temp_blkd;
+				// Only one in list
+				TASK_LL *next_val = temp_blkd->next;
 				temp_blkd->task_state = READY;
+				
+				temp_blkd->prev->next = temp_blkd->next;
+				temp_blkd->next->prev = temp_blkd->prev;
 
-				if (prev == NULL) { 
-					// temp_blkd == blocked_start is true
-					if (blocked_start->next != blocked_start) blocked_start = blocked_start->next;
-					else {
+				if (blocked_start == temp_blkd) {
+					blocked_start = blocked_start->next;
+					if (blocked_start == temp_blkd) {
 						blocked_start = NULL;
 						blocked_end = NULL;
+						temp_blkd->prev = ready_end;
+						temp_blkd->next = ready_end->next;
+						ready_end->next = temp_blkd;
+						ready_end = temp_blkd;
+						break;
 					}
-				} else {
-					prev->next = temp_blkd->next;
+				} else if (blocked_end == temp_blkd) {
+					blocked_end = blocked_end->prev;
+					blocked_end->next = temp_blkd->next;
+					break;
 				}
+				
+				temp_blkd->prev = ready_end;
+				temp_blkd->next = ready_end->next;
+				ready_end->next = temp_blkd;
+				ready_end = temp_blkd;
 
-				temp_blkd->next = NULL;
+				temp_blkd = next_val;
+			} else {
+				if (temp_blkd == temp_blkd->next) break;
+				temp_blkd = temp_blkd->next;
 			}
-
-			prev = temp_blkd;
 		}
 
 

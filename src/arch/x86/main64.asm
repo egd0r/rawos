@@ -226,7 +226,7 @@ isr_stub_%+%1:
     mov rsp, rax ;; Set new stack
     pop rdi ;; Popping vector into rdi will get overwritten
     popreg
-    pop r9 ;; pop fake error into rax
+    pop r9 ;; pop fake error into r9
     ; call test_state
     ; mov ax, 3
     ; mov ds, ax

@@ -44,8 +44,8 @@ int taskbar_disp(int pid);
 
 void getch(char *buffer);
 
-void attach_proc_to_screen(TASK_LL *proc, int container_id);
-void remove_proc_from_screen(TASK_LL *proc, int container_id);
+int attach_proc_to_screen(int pid, int sic);
+int remove_proc_from_screen(int pid, int sic);
 
 extern SCREEN_O * current_screen;
 extern int no_screens;
