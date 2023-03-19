@@ -143,26 +143,92 @@ int swap_screens(int new_screen_id) {
     return 1;
 }
 
-void map_screen(SCREEN_O *scr, TASK_DISP_INFO bounds) {
+// Build a string out of every line and re-print it
+// void map_screen(SCREEN_O *scr, TASK_DISP_INFO bounds) {
+//     struct CONT_O existing_cont = scr->conts[scr->selected_cont];
+//     TASK_DISP_INFO existing_disp = existing_cont.display_blk;
+//     // Map bounds of existing display block to LHS
+//     // Starting at end, work back until first character is found in screen
+//     SCR_CHAR *chars = scr->chars;
+//     int curr_x = bounds.xmax;
+//     int curr_y = bounds.ymax;
+//     SCR_CHAR temp_chars[COLUMNS*(LINES+1)];
+//     for (int i=(existing_disp.xmax+existing_disp.ymax * COLUMNS); i>=LINES/2; i--) {
+//         // If contains char begin mapping
+//         int temp_index = (curr_x + curr_y * COLUMNS);
+//         chars[temp_index] = chars[i];
+//         chars[i] = CLEAR_CHAR();
+
+//         curr_x--;
+//         if (curr_x < bounds.xmin) {
+//             curr_y--;
+//             curr_x = bounds.xmax;
+//         }
+//     }
+// }
+
+void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
     struct CONT_O existing_cont = scr->conts[scr->selected_cont];
     TASK_DISP_INFO existing_disp = existing_cont.display_blk;
-    // Map bounds of existing display block to LHS
-    // Starting at end, work back until first character is found in screen
     SCR_CHAR *chars = scr->chars;
-    int curr_x = bounds.xmax;
-    int curr_y = bounds.ymax;
-    SCR_CHAR temp_chars[COLUMNS*(LINES+1)];
-    for (int i=(existing_disp.xmax+existing_disp.ymax * COLUMNS); i>=LINES/2; i--) {
-        // If contains char begin mapping
-        int temp_index = (curr_x + curr_y * COLUMNS);
-        chars[temp_index] = chars[i];
-        chars[i] = CLEAR_CHAR();
 
-        curr_x--;
-        if (curr_x < bounds.xmin) {
-            curr_y--;
-            curr_x = bounds.xmax;
+    // Create temporary buffer
+    SCR_CHAR temp_chars[COLUMNS * (LINES + 1)] = {0};
+    // memset(temp_chars, 0, sizeof(temp_chars));
+
+    // Map existing screen buffer to left side of temp buffer
+    int curr_x = bounds->xmin;
+    int curr_y = bounds->ymin;
+    // Starting half-way
+    int existing_x = existing_disp.xmax / 2;
+    int existing_y = existing_disp.ymax / 2;
+    int new = 0;
+    for (; (existing_x < existing_disp.xmax || existing_y < existing_disp.ymax) && (curr_x < bounds->xmax || curr_y < bounds->ymax); ) {
+        int temp_index = curr_x + curr_y * COLUMNS;
+        int i = existing_x + existing_y * COLUMNS;
+        
+        if (existing_x >= bounds->xmax && new == 0) {
+            curr_y++;
+            curr_x = bounds->xmin;
+            new = 1;
         }
+
+        temp_index = curr_x + curr_y * COLUMNS;
+        i = existing_x + existing_y * COLUMNS;
+        
+
+        if (curr_x < bounds->xmax && curr_y < bounds->ymax)
+            temp_chars[temp_index] = chars[i];
+
+        if (existing_x == existing_disp.xpos && existing_y == existing_disp.ypos) {
+            bounds->xpos = curr_x;
+            bounds->ypos = curr_y;
+        }
+
+        curr_x++;
+        if (curr_x > bounds->xmax) {
+            curr_y++;
+            curr_x = bounds->xmin;
+        }
+
+        existing_x++;
+        if (existing_x > existing_disp.xmax) {
+            existing_y++;
+            existing_x = existing_disp.xmin;
+            new = 0;
+        }
+    }
+
+    SCR_CHAR c = CLEAR_CHAR();
+    for (int i = 0; i < COLUMNS * LINES; i++) {
+        chars[i] = c;
+    }
+
+    memcpy((uint8_t *)temp_chars, (uint8_t *)chars, COLUMNS * (LINES + 1));
+
+    if (current_screen->id == scr->id) {
+        move_cursor(bounds->xpos, bounds->ypos);
+        swap_screens(scr->id);
     }
 }
 
@@ -195,7 +261,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         // need to map existing container to left side
         TASK_DISP_INFO new_existing = NEW_LH_DISPLAY();
         // Map current buffer to new bounds
-        map_screen(new_scr, new_existing);
+        map_screen(new_scr, &new_existing);
         new_scr->conts[0].display_blk = new_existing;
     }
     cont.display_blk = ret;
