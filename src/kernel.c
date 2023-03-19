@@ -100,11 +100,11 @@ int kmain(unsigned long mbr_addr) {
 
     *((int *)0xb8900) = mbr_addr;  
     
+    create_task(&k_taskbar, -1);
     create_task(&taskA, -1);
     create_task(&taskB, -1);
     create_task(&taskB, -1);
     create_task(&taskC, -1);
-    create_task(&k_taskbar, -1);
     cls();
     activate_interrupts();
 
@@ -220,11 +220,23 @@ void help() {
     sys_printf("\n");
 }
 
+void kill(char *command) {
+    char *pid = 0x00;
+    if ((pid = progress_until_char(command, ' ')) == 0) return;
+    pid++;
+    int pid_kill = atoi(pid);
+    
+    CLI();
+    kill_task(pid_kill);
+    STI();
+}
+
 void process_command(char *command) {
     sys_printf("\n");
     if (strncmp(command, "ps", 2) == 0) ps();
-    else if (strncmp(command, "clear", 5) == 0) clear();
+    else if (strncmp(command, "kill", 4) == 0) kill(command);
     else if (strncmp(command, "help", 4) == 0) help();
+    else if (strncmp(command, "clear", 5) == 0) clear();
     else if (strncmp(command, "create", 6) == 0) create(command);
 
     else sys_printf("Unrecognised command: %s\n", command);

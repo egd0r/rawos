@@ -127,6 +127,20 @@ void kputchar (int c) {
     goto knewline;
 }
 
+int atoi(char *str) {
+    int number = 0;
+    int i = 0;
+
+    // Iterate through each character in the string
+    while (str[i] != '\0') {
+        // Convert the character to its numeric value and add it to the number
+        number = number * 10 + (str[i] - '0');
+        i++;
+    }
+
+    return number;
+}
+
 char *_itoa(int num, int base, char *buffer) {
     char rep[16] = "0123456789ABCDEF";
     char *ptr = &buffer[49];

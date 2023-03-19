@@ -42,6 +42,7 @@ SCR_CHAR to_char_mod(int c, int ATTRIBUTES);
 #define KERNEL_MSG(c) to_char_mod(c, ATT_BLACK << 4 | ATT_RED)
 #define CLEAR_CHAR() to_char_mod(' ', ATT_BLACK << 4 | ATT_BLACK)
 
+int atoi(char *str);
 void cls (void);
 void itoa (char *buf, int base, int d);
 void putchar (SCR_CHAR c, int screen_id, int cont_id);

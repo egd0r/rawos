@@ -63,7 +63,7 @@ typedef struct task_item_group {
 
 // Process management
 int create_task(void *entry_point, int sid);
-int kill_task(int pid);
+void kill_task(int pid);
 
 void lock_scheduler();
 void unlock_scheduler();

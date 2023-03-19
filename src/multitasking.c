@@ -62,6 +62,67 @@ TASK_LL * sleep(int secs) {
     return current_item;
 }
 
+extern void remove_display(int sid);
+extern SCREEN_O *find_screen(int id);
+void kill_task(int pid) {
+    // Add current process to blocked queue
+    load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
+
+    // Add seconds to sleep for
+    TASK_LL *to_kill = TASK(pid);
+    if (to_kill == NULL || to_kill == current_item) return;
+
+    TASK_LL *prev = NULL;
+    for (TASK_LL *ready = ready_start; ready != ready_end && ready != to_kill; ready = ready->next) {
+        prev = ready;
+    }
+
+    if (prev == NULL) {
+        ready_start = ready_start->next;
+    } else {
+        if (ready_end == to_kill) {
+            ready_end = prev;
+            prev->next = NULL;
+        } else {
+            prev->next = to_kill->next;
+        }
+    }
+
+    
+    TASK_LL *temp_ter = terminated_curr;
+    TASK_LL *prev_ter = NULL;
+    for (; temp_ter != NULL; temp_ter = temp_ter->next) {
+        prev_ter = temp_ter;
+    }
+
+    to_kill->next = NULL;
+    to_kill->prev = NULL;
+
+    if (temp_ter == NULL) 
+        terminated_curr = to_kill;
+    else {
+        prev_ter->next = to_kill;
+        to_kill->next = NULL;
+        to_kill->prev = prev_ter;
+    }
+
+    SCREEN_O *scr = find_screen(to_kill->screen_id);
+
+    int i=0;
+    for (; i<scr->cont_size && scr->conts[i].pid != to_kill->PID; i++);
+
+    for (i++; i<scr->cont_size; i++) {
+        scr->conts[i] = scr->conts[i-1];
+    }
+
+    scr->cont_size--;
+
+    if (scr->cont_size <= 1) {
+        remove_display(scr->id);
+    }
+
+}
+
 void add_to_circular_q(TASK_LL *current, TASK_LL * to_add) {
     if (current == NULL) {
         current = to_add;
@@ -247,22 +308,6 @@ TASK_LL * find_prev_task(int pid) {
         }
     }
     return NULL;
-}
-
-int kill_task(int pid) {
-    if (pid == 0) return 1; // Can't kill init
-
-    // Clearing memory here... closing files and all that
-    
-    if (current_item->PID == pid)
-        return 1; // Only called from interrupt?
-
-    TASK_LL *prev = find_prev_task(pid);
-    if (prev == NULL) return 1;
-
-    prev->next = prev->next->next;
-
-    return 0;
 }
 
 // Simple RR scheduler

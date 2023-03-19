@@ -116,7 +116,12 @@ void k_taskbar() {
     while (1) {  
         int index=0;
         for (int i=1; index<COLUMNS; i++, index+=2) {
-            task_b[index].ch = i<no_screens ? find_screen(i)->id + 0x30 : ' ';
+            SCREEN_O *scr = find_screen(i);
+            if (scr == NULL && i<no_screens) {
+                index-=2;
+                continue; 
+            }
+            task_b[index].ch = i<no_screens ? scr->id + 0x30 : ' ';
             task_b[index].attribute = ATT_LT_GREY << 4 | (current_screen->id == i ? ATT_LT_RED : ATT_BLACK);
             task_b[index+1].ch = i<no_screens ? '|' : ' ';
             task_b[index+1].attribute = ATT_LT_GREY << 4 | ATT_BLACK;
@@ -228,7 +233,6 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
 
     if (current_screen->id == scr->id) {
         move_cursor(bounds->xpos, bounds->ypos);
-        swap_screens(scr->id);
     }
 }
 
@@ -275,5 +279,19 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     }
 
     return no_screens-1;
+}
+
+void remove_display(int sid) {
+    if (current_screen->id == sid) return;
+    SCREEN_O *prev = NULL;
+    for (SCREEN_O *temp = screen_root; temp != NULL && temp->id != sid; temp=temp->next) {
+        prev = temp;
+    }
+
+
+    if (prev == NULL || prev->next == NULL) screen_root = screen_root->next;
+    else {
+        prev->next = prev->next->next;
+    }
 }
 
