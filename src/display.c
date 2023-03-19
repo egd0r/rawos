@@ -240,6 +240,7 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
 int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     if (curr == 0) return -1; // Proc wants to output to 0
 
+    int sid = no_screens;
     TASK_DISP_INFO ret;
 
     SCREEN_O *new_scr = NULL;
@@ -267,6 +268,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         // Map current buffer to new bounds
         map_screen(new_scr, &new_existing);
         new_scr->conts[0].display_blk = new_existing;
+        sid = new_scr->id;
     }
     cont.display_blk = ret;
     cont.pid = pid;
@@ -278,7 +280,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         add_screen(new_scr);
     }
 
-    return no_screens-1;
+    return sid;
 }
 
 void remove_display(int sid) {

@@ -191,7 +191,7 @@ void create(char *command) {
     if ((screen = progress_until_char(task_req, ' ')) == 0) return;
     *screen = '\0';
     screen++;
-    int sid = (*screen)-48;
+    int sid = atoi(screen);
 
     // sys_printf("New task to make %s\n", taskA);
     // sys_printf("New screen to add to %s\n", screen);

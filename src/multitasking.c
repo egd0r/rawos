@@ -63,6 +63,7 @@ TASK_LL * sleep(int secs) {
 }
 
 extern void remove_display(int sid);
+extern TASK_DISP_INFO NEW_FULL_DISPLAY();
 extern SCREEN_O *find_screen(int id);
 void kill_task(int pid) {
     // Add current process to blocked queue
@@ -119,6 +120,10 @@ void kill_task(int pid) {
 
     if (scr->cont_size <= 1) {
         remove_display(scr->id);
+    } else {
+        for (int i=0; i<scr->cont_size; i++) {
+            if (scr->conts[i].pid != 2) scr->conts[i].display_blk = NEW_FULL_DISPLAY();
+        }
     }
 
 }
@@ -295,8 +300,10 @@ int create_task(void *entry_point, int sid) {
 TASK_LL * TASK(int pid) {
     if (pid == current_item->PID) return current_item;
 
-    for (TASK_LL *temp = ready_start; temp != ready_end; temp=temp->next) {
+    TASK_LL *prev = NULL;
+    for (TASK_LL *temp = ready_start; prev != ready_end; temp=temp->next) {
         if (temp->PID == pid) return temp;
+        prev = temp;
     }
     return NULL;
 }
