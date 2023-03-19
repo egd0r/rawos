@@ -102,6 +102,7 @@ int kmain(unsigned long mbr_addr) {
     
     create_task(&taskA, -1);
     create_task(&taskB, -1);
+    create_task(&taskB, -1);
     create_task(&taskC, -1);
     create_task(&k_taskbar, -1);
     cls();
@@ -150,7 +151,7 @@ int strncmp(const char* s1, const char* s2, size_t n) {
 
 
 void print_proc(TASK_LL *task) {
-    sys_printf("PID: %d    ", task->PID);
+    sys_printf("PID: %d    ", task->PID, " ");
     sys_printf("Proc time(ms): %d    ", task->proc_time);
     sys_printf("Screen ID: %d\n", task->screen_id);
 }
@@ -190,18 +191,19 @@ void create(char *command) {
     if ((screen = progress_until_char(task_req, ' ')) == 0) return;
     *screen = '\0';
     screen++;
+    int sid = (*screen)-48;
 
     // sys_printf("New task to make %s\n", taskA);
     // sys_printf("New screen to add to %s\n", screen);
 
     CLI();
     if (strncmp(task_req, "a", 1) == 0) {
-        create_task(&taskA, -1);
+        create_task(&taskA, sid);
     } else if (strncmp(task_req, "b", 1) == 0) {
-        create_task(&taskB, -1);
+        create_task(&taskB, sid);
     }
     else if (strncmp(task_req, "c", 1) == 0) {
-        create_task(&taskC, -1);
+        create_task(&taskC, sid);
     } else printf("Task unrecognised.\n");
     STI();
 }

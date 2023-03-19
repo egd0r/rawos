@@ -204,7 +204,9 @@ int create_task(void *entry_point, int sid) {
     new_task->switches = 0;
     
     if (entry_point == k_taskbar) new_task->screen_id = taskbar_disp(new_task->PID);
-    else if (sid == -1) new_task->screen_id = FULL_DISPLAY(new_task->PID);
+    else {
+        new_task->screen_id = new_disp(sid, new_task->PID, 0, 0, 0, 0);
+    }
 
     new_task->next = new_task;
     new_task->prev = new_task;

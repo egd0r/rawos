@@ -25,7 +25,7 @@ TASK_DISP_INFO NEW_FULL_DISPLAY() {
 }
 
 TASK_DISP_INFO NEW_RH_DISPLAY() {
-    TASK_DISP_INFO ret; ret.ypos = 0; ret.xmin = COLUMNS/2 + 1; ret.xpos = ret.xmin; ret.xmax = COLUMNS; ret.ymin = 0; ret.ymax = LINES-1;
+    TASK_DISP_INFO ret; ret.ypos = 0; ret.xmin = COLUMNS/2; ret.xpos = ret.xmin; ret.xmax = COLUMNS; ret.ymin = 0; ret.ymax = LINES-1;
     return ret;
 }
 
@@ -58,6 +58,7 @@ void getch(char *buffer) {
 }
 
 SCREEN_O * find_screen(int id) {
+    if (id == -1 || id == 0) return NULL;
     for (SCREEN_O *temp = screen_root; temp != NULL; temp=temp->next) {
         if (temp->id == id) return temp;
     }
@@ -128,7 +129,7 @@ void k_taskbar() {
 }
 
 int swap_screens(int new_screen_id) {
-    if (current_screen->id == new_screen_id) return -1;
+    // if (current_screen->id == new_screen_id) return -1;
     if (new_screen_id > no_screens || new_screen_id == 0) return -1;
 
     SCREEN_O *to_swap = find_screen(new_screen_id);
@@ -150,15 +151,15 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO bounds) {
     SCR_CHAR *chars = scr->chars;
     int curr_x = bounds.xmax;
     int curr_y = bounds.ymax;
-    for (int i=(existing_disp.xmax+existing_disp.ymax * COLUMNS); i>0; i--) {
-        if (chars[i].ch == 0xFF || chars[i].ch == 0x00) continue;
+    SCR_CHAR temp_chars[COLUMNS*(LINES+1)];
+    for (int i=(existing_disp.xmax+existing_disp.ymax * COLUMNS); i>=LINES/2; i--) {
         // If contains char begin mapping
         int temp_index = (curr_x + curr_y * COLUMNS);
         chars[temp_index] = chars[i];
         chars[i] = CLEAR_CHAR();
 
         curr_x--;
-        if (curr_x < 0) {
+        if (curr_x < bounds.xmin) {
             curr_y--;
             curr_x = bounds.xmax;
         }
@@ -167,7 +168,7 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO bounds) {
 
 // Returns ID of new screen created
 int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
-    if (curr == -1) return -1; // Proc wants to output to 0
+    if (curr == 0) return -1; // Proc wants to output to 0
 
     TASK_DISP_INFO ret;
 
@@ -177,8 +178,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     memset((uint64_t)&cont, 0, sizeof(cont));
     cont.stream.position = -1;
 
-    if (curr != 0)
-        new_scr = find_screen(curr);
+    new_scr = find_screen(curr);
 
     int make_tb = 0;
     if (new_scr == NULL) {
@@ -186,6 +186,9 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         memset((uint64_t)new_scr, 0, sizeof(SCREEN_O));
         ret = NEW_FULL_DISPLAY();
         make_tb = 1;
+        cont.parent_screen_id = no_screens;
+        new_scr->id = no_screens;
+        no_screens++;
     } else {
         // ret is new display block
         ret = NEW_RH_DISPLAY();
@@ -193,18 +196,18 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         TASK_DISP_INFO new_existing = NEW_LH_DISPLAY();
         // Map current buffer to new bounds
         map_screen(new_scr, new_existing);
+        new_scr->conts[0].display_blk = new_existing;
     }
-
-    cont.parent_screen_id = no_screens;
-    new_scr->id = no_screens;
-    no_screens++;
     cont.display_blk = ret;
     cont.pid = pid;
 
-    new_scr->conts[(new_scr->cont_size)++] = cont;
-    if (make_tb) new_scr->conts[(new_scr->cont_size)++] = taskbar_cont;
 
-    add_screen(new_scr);
+    new_scr->conts[(new_scr->cont_size)++] = cont;
+    if (make_tb) {
+        new_scr->conts[(new_scr->cont_size)++] = taskbar_cont;
+        add_screen(new_scr);
+    }
+
     return no_screens-1;
 }
 

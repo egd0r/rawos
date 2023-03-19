@@ -137,13 +137,14 @@ void kb_handler() {
 		alt_pressed = 1;
 	} else if (scode == 184) {
 		alt_pressed = 0;
-	} else if (alt_pressed == 1 && scode < 0x81) {
-		load_cr3((uint64_t)(&page_table_l4)&0xFFFFF); 
-		if (scode == 11) {
-			swap_screens(1);
-		} else {
-			swap_screens(scode-1); // -2 to get the PID of process to switch to
+	} else if (alt_pressed == 1 && scode < 0x81 && scode > 1) {
+		load_cr3((uint64_t)(&page_table_l4)&0xFFFFF);
+		int code_offset = 1;
+		if (scode > 13) {
+			code_offset+=2;
 		}
+		swap_screens(scode-code_offset); // -2 to get the ID of screen to switch to
+		
 		load_cr3(current_item->cr3);
 	} else if (scode < 0x81) {
         IN_STREAM *stream = &(current_screen->conts[current_screen->selected_cont].stream);
@@ -225,6 +226,7 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 				temp_blkd = next_val;
 			} else {
 				if (temp_blkd == temp_blkd->next) break;
+				if (temp_blkd == blocked_end) break;
 				temp_blkd = temp_blkd->next;
 			}
 		}
