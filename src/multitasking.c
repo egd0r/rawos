@@ -72,41 +72,69 @@ void kill_task(int pid) {
     // Add seconds to sleep for
     TASK_LL *to_kill = TASK(pid);
     if (to_kill == NULL || to_kill == current_item) return;
-
-    TASK_LL *prev = NULL;
-    for (TASK_LL *ready = ready_start; ready != ready_end && ready != to_kill; ready = ready->next) {
-        prev = ready;
-    }
-
-    if (prev == NULL) {
-        ready_start = ready_start->next;
-    } else {
-        if (ready_end == to_kill) {
-            ready_end = prev;
-            prev->next = NULL;
-        } else {
-            prev->next = to_kill->next;
-        }
-    }
-
     
-    TASK_LL *temp_ter = terminated_curr;
-    TASK_LL *prev_ter = NULL;
-    for (; temp_ter != NULL; temp_ter = temp_ter->next) {
-        prev_ter = temp_ter;
-    }
+    if (to_kill->task_state == READY) {
+        TASK_LL *prev = NULL;
+        for (TASK_LL *ready = ready_start; ready != ready_end && ready != to_kill; ready = ready->next) {
+            prev = ready;
+        }
 
+        if (prev == NULL) {
+            if (to_kill->next == to_kill) {
+                ready_start = NULL;
+                ready_end = NULL;
+            } else {
+                to_kill->prev->next = ready_start->next;
+                to_kill->next->prev = ready_start->prev;
+                ready_start = ready_start->next;
+            }
+        } else {
+            if (ready_end == to_kill) {
+                ready_end = prev;
+                prev->next = NULL;
+            } else {
+                prev->next = to_kill->next;
+            }
+        }
+    } else if (to_kill->task_state == BLOCKED) {
+        TASK_LL *prev = NULL;
+        for (TASK_LL *ready = blocked_start; ready != blocked_end && ready != to_kill; ready = ready->next) {
+            prev = ready;
+        }
+
+        if (prev == NULL) {
+            if (to_kill->next == to_kill) {
+                blocked_start = NULL;
+                blocked_end = NULL;
+            } else {
+                to_kill->prev->next = blocked_start->next;
+                to_kill->next->prev = blocked_start->prev;
+                blocked_start = blocked_start->next;
+            }
+        } else {
+            if (blocked_end == to_kill) {
+                blocked_end = prev;
+                prev->next = NULL;
+            } else {
+                prev->next = to_kill->next;
+            }
+        }
+    } else {
+        return;
+    }
+   
+
+
+    // Adding to killed list
     to_kill->next = NULL;
     to_kill->prev = NULL;
-
-    if (temp_ter == NULL) 
-        terminated_curr = to_kill;
-    else {
-        prev_ter->next = to_kill;
-        to_kill->next = NULL;
-        to_kill->prev = prev_ter;
+    if (terminated_curr != NULL) {
+        terminated_curr->prev = to_kill;
+        to_kill->next = terminated_curr;
     }
+    terminated_curr = to_kill;
 
+    // Removing screen
     SCREEN_O *scr = find_screen(to_kill->screen_id);
 
     int i=0;
@@ -271,7 +299,7 @@ int create_task(void *entry_point, int sid) {
     
     if (entry_point == k_taskbar) new_task->screen_id = taskbar_disp(new_task->PID);
     else {
-        new_task->screen_id = new_disp(sid, new_task->PID, 0, 0, 0, 0);
+        new_task->screen_id = new_disp(sid, new_task->PID);
     }
 
     new_task->next = new_task;
@@ -305,6 +333,13 @@ TASK_LL * TASK(int pid) {
         if (temp->PID == pid) return temp;
         prev = temp;
     }
+    
+    TASK_LL *prev_blk = NULL;
+    for (TASK_LL *temp = blocked_start; prev_blk != blocked_end; temp=temp->next) {
+        if (temp->PID == pid) return temp;
+        prev_blk = temp;
+    }
+
     return NULL;
 }
 

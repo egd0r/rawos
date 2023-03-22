@@ -11,14 +11,6 @@ SCREEN_O screen_arr[COLUMNS] = { 0 };
 
 SCREEN_O * current_screen = NULL;
 
-int FULL_DISPLAY(int pid) {
-    return new_disp(0, pid, 0, COLUMNS, 0, LINES-1);
-}
-
-int HALF_DISPLAY(int pid, int sid) {
-    return new_disp(sid, pid, 0, COLUMNS/2, 0, LINES-1);
-}
-
 TASK_DISP_INFO NEW_FULL_DISPLAY() {
     TASK_DISP_INFO ret; ret.xpos = 0; ret.ypos = 0; ret.xmin = 0; ret.xmax = COLUMNS; ret.ymin = 0; ret.ymax = LINES-1;
     return ret;
@@ -149,29 +141,6 @@ int swap_screens(int new_screen_id) {
 }
 
 // Build a string out of every line and re-print it
-// void map_screen(SCREEN_O *scr, TASK_DISP_INFO bounds) {
-//     struct CONT_O existing_cont = scr->conts[scr->selected_cont];
-//     TASK_DISP_INFO existing_disp = existing_cont.display_blk;
-//     // Map bounds of existing display block to LHS
-//     // Starting at end, work back until first character is found in screen
-//     SCR_CHAR *chars = scr->chars;
-//     int curr_x = bounds.xmax;
-//     int curr_y = bounds.ymax;
-//     SCR_CHAR temp_chars[COLUMNS*(LINES+1)];
-//     for (int i=(existing_disp.xmax+existing_disp.ymax * COLUMNS); i>=LINES/2; i--) {
-//         // If contains char begin mapping
-//         int temp_index = (curr_x + curr_y * COLUMNS);
-//         chars[temp_index] = chars[i];
-//         chars[i] = CLEAR_CHAR();
-
-//         curr_x--;
-//         if (curr_x < bounds.xmin) {
-//             curr_y--;
-//             curr_x = bounds.xmax;
-//         }
-//     }
-// }
-
 void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
     struct CONT_O existing_cont = scr->conts[scr->selected_cont];
     TASK_DISP_INFO existing_disp = existing_cont.display_blk;
@@ -237,10 +206,10 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
 }
 
 // Returns ID of new screen created
-int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
-    if (curr == 0) return -1; // Proc wants to output to 0
+int new_disp(int sid, int pid) {
+    if (sid == 0) return -1; // Proc wants to output to 0
 
-    int sid = no_screens;
+    int curr_id = no_screens;
     TASK_DISP_INFO ret;
 
     SCREEN_O *new_scr = NULL;
@@ -249,7 +218,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
     memset((uint64_t)&cont, 0, sizeof(cont));
     cont.stream.position = -1;
 
-    new_scr = find_screen(curr);
+    new_scr = find_screen(sid);
 
     int make_tb = 0;
     if (new_scr == NULL) {
@@ -268,7 +237,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         // Map current buffer to new bounds
         map_screen(new_scr, &new_existing);
         new_scr->conts[0].display_blk = new_existing;
-        sid = new_scr->id;
+        curr_id = new_scr->id;
     }
     cont.display_blk = ret;
     cont.pid = pid;
@@ -280,7 +249,7 @@ int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax) {
         add_screen(new_scr);
     }
 
-    return sid;
+    return curr_id;
 }
 
 void remove_display(int sid) {

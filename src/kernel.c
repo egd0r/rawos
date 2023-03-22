@@ -169,6 +169,10 @@ void ps() {
         print_proc(temp);
         if (temp == blocked_end) break;
     }
+    sys_printf("Terminated:\n");
+    for (TASK_LL *temp = terminated_curr; temp != NULL; temp=temp->next) {
+        print_proc(temp);
+    }
     sys_printf("\n");
 }
 

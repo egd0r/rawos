@@ -38,8 +38,8 @@ typedef struct SCREEN {
     struct SCREEN *next;
 } SCREEN_O;
 
-int new_disp(int curr, int pid, int xmin, int xmax, int ymin, int ymax);
-int FULL_DISPLAY(int pid);
+int new_disp(int curr, int pid);
+
 int taskbar_disp(int pid);
 
 void getch(char *buffer);
