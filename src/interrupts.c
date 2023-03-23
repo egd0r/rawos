@@ -192,17 +192,25 @@ void * exception_handler(INT_FRAME * frame, uint64_t arg) {
 				TASK_LL *next_val = temp_blkd->next;
 				temp_blkd->task_state = READY;
 				
+				// Remove from blocked queue
 				temp_blkd->prev->next = temp_blkd->next;
 				temp_blkd->next->prev = temp_blkd->prev;
 
+				// If at start of blocked list
 				if (blocked_start == temp_blkd) {
+					// Progress
 					blocked_start = blocked_start->next;
-					if (blocked_start == temp_blkd) {
+					// If at end too then empty blocked queue
+					if (blocked_end == temp_blkd) {
 						blocked_start = NULL;
 						blocked_end = NULL;
+						// Set previous to ready end
 						temp_blkd->prev = ready_end;
+						// Set next to correct next
 						temp_blkd->next = ready_end->next;
+						// Set prev next to curr
 						ready_end->next = temp_blkd;
+						// Finally set the end of the list
 						ready_end = temp_blkd;
 						break;
 					}

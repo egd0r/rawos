@@ -34,6 +34,7 @@ TASK_LL * sleep(int secs) {
         blocked_start = current_item;
         blocked_end = current_item;
         blocked_start->next = blocked_end;
+        blocked_start->prev = blocked_end;
     } else {
         current_item->next = blocked_end->next;
         current_item->prev = blocked_end;
@@ -241,7 +242,7 @@ int create_task(void *entry_point, int sid) {
         }
         new_task->task_state = READY;
         ready_end->next = new_task;
-        ready_end = ready_end->next;
+        ready_end = new_task;
     }
 
     kprintf("Created a new task with PID %d\n", new_task->PID);    
@@ -293,11 +294,11 @@ TASK_LL * schedule(INT_FRAME *curr_proc_state) {
     if (ready_start != NULL) {
         current_item->task_state = READY;
         ready_end->next = current_item;
-        ready_end = ready_end->next;
+        ready_end = current_item;
         current_item = ready_start;
         current_item->task_state = RUNNING;
         ready_start = ready_start->next; // Progress ready_start
-
+        ready_end->next = ready_start;
     }
 
     heap_current = current_item->heap_current;

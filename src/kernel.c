@@ -127,29 +127,31 @@ int strncmp(const char* s1, const char* s2, size_t n) {
 
 
 void print_proc(TASK_LL *task) {
-    sys_printf("PID: %d    ", task->PID, " ");
-    sys_printf("Proc time(ms): %d    ", task->proc_time);
-    sys_printf("Screen ID: %d\n", task->screen_id);
+    printf("PID: %d    ", task->PID, " ");
+    printf("Proc time(ms): %d    ", task->proc_time);
+    printf("Screen ID: %d\n", task->screen_id);
 }
 
 void ps() {
-    sys_printf("\nCurrent:\n");
+    CLI();
+    printf("\nCurrent:\n");
     print_proc(current_item);
-    sys_printf("Ready:\n");
+    printf("Ready:\n");
     for (TASK_LL *temp = ready_start; temp != NULL; temp=temp->next) {
         print_proc(temp);
         if (temp == ready_end) break;
     }
-    sys_printf("Blocked:\n");
+    printf("Blocked:\n");
     for (TASK_LL *temp = blocked_start; temp != NULL; temp=temp->next) {
         print_proc(temp);
         if (temp == blocked_end) break;
     }
-    sys_printf("Terminated:\n");
+    printf("Terminated:\n");
     for (TASK_LL *temp = terminated_curr; temp != NULL; temp=temp->next) {
         print_proc(temp);
     }
-    sys_printf("\n");
+    printf("\n");
+    STI();
 }
 
 void clear() {
