@@ -155,7 +155,7 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
     for (; (existing_x < existing_disp.xmax || existing_y < existing_disp.ymax) && (curr_x < bounds->xmax || curr_y < bounds->ymax); ) {
         int temp_index = curr_x + curr_y * COLUMNS;
         int i = existing_x + existing_y * COLUMNS;
-        
+
         if (existing_x >= bounds->xmax && new == 0) {
             curr_y++;
             curr_x = bounds->xmin;
@@ -164,7 +164,7 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
 
         temp_index = curr_x + curr_y * COLUMNS;
         i = existing_x + existing_y * COLUMNS;
-        
+
 
         if (curr_x < bounds->xmax && curr_y < bounds->ymax)
             temp_chars[temp_index] = chars[i];
@@ -197,8 +197,10 @@ void map_screen(SCREEN_O *scr, TASK_DISP_INFO *bounds) {
 
     if (current_screen->id == scr->id) {
         move_cursor(bounds->xpos, bounds->ypos);
+        swap_screens(scr->id);
     }
 }
+
 
 // Returns ID of new screen created
 int new_disp(int sid, int pid) {

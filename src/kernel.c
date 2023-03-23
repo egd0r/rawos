@@ -78,8 +78,6 @@ int kmain(unsigned long mbr_addr) {
 
     idt_init();
 
-    // Map pages? Already got 16MB identity mapped
-    // Parse mb struct
     memset(BITMAP_VIRTUAL, ~0, 0x10000); //Sets bitmap to entirely allocated
 
     // Initialises memory map and finds initrd
@@ -87,24 +85,9 @@ int kmain(unsigned long mbr_addr) {
 
     create_task(0x00, -1);
 
-    // Allocate at 0
-    uint64_t ptr = (uint64_t)kalloc_physical(1);
-    ptr = (uint64_t)kalloc_physical(1);
-    ptr = (uint64_t)kalloc_physical(1);
-    ptr = (uint64_t)kalloc_physical(1);
-    // Free at 0
-    kfree_physical(ptr);
-
-    int *arr = new_malloc(sizeof(int)*5);
-    arr[1] = 5;
-
     *((int *)0xb8900) = mbr_addr;  
     
     create_task(&k_taskbar, -1);
-    // create_task(&taskA, -1);
-    // create_task(&taskB, -1);
-    // create_task(&taskB, -1);
-    // create_task(&taskC, -1);
     cls();
     activate_interrupts();
 
@@ -114,7 +97,6 @@ int kmain(unsigned long mbr_addr) {
 
     sys_printf(">");
     while (1) {
-    //   printf("k2");
         sys_getch(temp);
         char ch = temp[0];
         if (ch == '\n') {
@@ -126,12 +108,6 @@ int kmain(unsigned long mbr_addr) {
             sys_printf("%c ", ch);
             *temp = ch; temp++;
         }
-
-        // sys_getch(temp);
-        // // if (ch == '\0') get_word();
-        // if (temp[0] != -1) {
-        //     sys_printf("%c ", *temp);
-        // }
     }; //Spin on hang
     // Spawn init process
     

@@ -19,18 +19,6 @@ uint8_t *heap_current;
 int PID_COUNTER = 2;
 int irq_disables = 0;
 
-void lock_scheduler() {
-    CLI();
-    irq_disables++;
-}
-
-void unlock_scheduler() {
-    irq_disables--;
-    if (irq_disables == 0) {
-        STI();
-    }
-}
-
 extern uint64_t page_table_l4; // Kernel data
 extern void load_cr3(uint64_t pt);
 uint16_t poll_pit();
@@ -154,68 +142,6 @@ void kill_task(int pid) {
         }
     }
 
-}
-
-void add_to_circular_q(TASK_LL *current, TASK_LL * to_add) {
-    if (current == NULL) {
-        current = to_add;
-        to_add->next = to_add;
-        to_add->prev = to_add;
-        return;
-    }
-
-    to_add->prev = current->prev;
-    to_add->next = current;
-
-    current->prev->next = to_add;
-    current->prev = to_add;
-}
-
-TASK_LL * remove_from_circular_q(TASK_LL * to_remove) {
-    if (to_remove->next == to_remove) return NULL; // Only element in circular q
-
-    to_remove->next->prev = to_remove->prev;
-    to_remove->prev->next = to_remove->next;
-
-    return to_remove;
-}
-
-void add_to_end(TASK_LL *start, TASK_LL *end, TASK_LL * to_add) {
-    if (start == NULL) {
-        start = to_add;
-        end = to_add;
-        to_add->next = to_add;
-        to_add->prev = to_add;
-        return;
-    }
-    to_add->prev = end;
-    to_add->next = NULL;
-
-    end->next = to_add;
-    end = to_add;
-}
-
-TASK_LL * remove_from_end(TASK_LL *start, TASK_LL *end, TASK_LL *to_remove) {
-    if (to_remove == start && to_remove == end) {
-        start = NULL;
-        end = NULL;
-
-        return to_remove;
-    }
-
-    if (start != to_remove) {
-        to_remove->prev = to_remove->next;
-    } else {
-        start = start->next;
-    }
-    
-    if (end != to_remove) {
-        to_remove->next = to_remove->prev;
-    } else {
-        end = end->next;
-    }
-
-    return to_remove;
 }
 
 // Loading state into new address space
