@@ -101,10 +101,10 @@ int kmain(unsigned long mbr_addr) {
     *((int *)0xb8900) = mbr_addr;  
     
     create_task(&k_taskbar, -1);
-    create_task(&taskA, -1);
-    create_task(&taskB, -1);
-    create_task(&taskB, -1);
-    create_task(&taskC, -1);
+    // create_task(&taskA, -1);
+    // create_task(&taskB, -1);
+    // create_task(&taskB, -1);
+    // create_task(&taskC, -1);
     cls();
     activate_interrupts();
 

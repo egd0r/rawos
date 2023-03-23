@@ -1,15 +1,10 @@
 #include <display.h>
 #include <memory.h>
 
-CONTAINER *current_container = NULL;
-
 SCREEN_O *screen_root = NULL;
+SCREEN_O * current_screen = NULL;
 
 int no_screens = 1; // Always starts at 1 to allow for /dev/null
-SCREEN_O screen_arr[COLUMNS] = { 0 };
-
-
-SCREEN_O * current_screen = NULL;
 
 TASK_DISP_INFO NEW_FULL_DISPLAY() {
     TASK_DISP_INFO ret; ret.xpos = 0; ret.ypos = 0; ret.xmin = 0; ret.xmax = COLUMNS; ret.ymin = 0; ret.ymax = LINES-1;
